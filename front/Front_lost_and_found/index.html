@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<!-- Tells the browser this is an HTML5 document -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Campus Lost &amp; Found Portal - Face of Project</title>
+
+  <!-- External Stylesheet (style.css in the same folder) -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- =========================================================================
+       1. HEADER & NAVIGATION BAR
+       ========================================================================= -->
+  <header>
+    <div class="container nav">
+      <div class="logo">
+        🔍 Smart Campus <span class="badge-campus">BIT MESRA</span>
+      </div>
+      <div class="nav-actions" style="display: flex; align-items: center; gap: 0.6rem;">
+        <!-- Dynamic User Area: Displays 'Login / Register' OR 'User Name + Sign Out' -->
+        <div id="nav-user-area"></div>
+        <button class="btn btn-success" onclick="openModal('report-modal')">➕ Report Item</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       2. HERO SECTION
+       ========================================================================= -->
+  <div class="container hero">
+    <h1>Campus Lost &amp; Found Portal</h1>
+    <p>Report lost belongings, search reported items, and reconnect items with their owners easily.</p>
+  </div>
+
+  <!-- =========================================================================
+       3. CONTROLS (SEARCH & HIERARCHICAL FILTERS)
+       ========================================================================= -->
+  <div class="container controls">
+
+    <!-- Search Input -->
+    <div class="search-row">
+      <input type="text" id="search-input" placeholder="Search by item name, location, or description..." oninput="filterItems()">
+    </div>
+
+    <!-- MAIN FILTER: Lost Items vs Found Items (Top Level) -->
+    <div class="filter-group">
+      <span class="filter-label">Select Section:</span>
+      <div class="filter-chips">
+        <button type="button" class="chip active" id="chip-main-all" onclick="setMainFilter('all', this)">📋 All Items</button>
+        <button type="button" class="chip" id="chip-main-lost" onclick="setMainFilter('Lost', this)">🔴 Lost Items</button>
+        <button type="button" class="chip" id="chip-main-found" onclick="setMainFilter('Found', this)">🟢 Found Items</button>
+      </div>
+    </div>
+
+    <!-- SUB-FILTER: Electronics and Other Items INSIDE Lost/Found -->
+    <div class="sub-filter-row" id="sub-filter-container">
+      <span class="sub-filter-label" id="sub-filter-label">Categories inside items:</span>
+      <div class="filter-chips">
+        <button type="button" class="chip chip-sub active" onclick="setCategoryFilter('all', this)">All Categories</button>
+        <button type="button" class="chip chip-sub" onclick="setCategoryFilter('Electronics', this)">💻 Electronics</button>
+        <button type="button" class="chip chip-sub" onclick="setCategoryFilter('Other Items', this)">📦 Other Items</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- =========================================================================
+       4. MAIN CONTENT CONTAINER
+       Electronics and Other Items are displayed INSIDE Lost Items and Found Items
+       ========================================================================= -->
+  <div class="container" id="portal-content">
+    <!-- Populated dynamically by script.js -->
+  </div>
+
+  <!-- =========================================================================
+       5. REPORT MODAL (POPUP FORM)
+       ========================================================================= -->
+  <div id="report-modal" class="modal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeModal('report-modal')">&times;</button>
+      <h2 style="margin-bottom: 1rem;">Report Lost or Found Item</h2>
+
+      <form id="report-form" onsubmit="handleReportSubmit(event)">
+
+        <!-- Main Section: Lost or Found -->
+        <div class="form-group">
+          <label>Status Type</label>
+          <select id="item-type" required>
+            <option value="Lost">Lost Item</option>
+            <option value="Found">Found Item</option>
+          </select>
+        </div>
+
+        <!-- Category: Inside Lost or Found -->
+        <div class="form-group">
+          <label>Category (Inside Status)</label>
+          <select id="item-category" required>
+            <option value="Electronics">Electronics</option>
+            <option value="Other Items">Other Items</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Item Name</label>
+          <input type="text" id="item-name" placeholder="e.g. MacBook Air, Blue Leather Wallet" required>
+        </div>
+
+        <div class="form-group">
+          <label>Location (Campus Area)</label>
+          <input type="text" id="item-location" placeholder="e.g. Central Library 1st Floor" required>
+        </div>
+
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="item-date" required>
+        </div>
+
+        <div class="form-group">
+          <label>Contact Info</label>
+          <input type="text" id="item-contact" placeholder="Phone Number or Email" required>
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="item-desc" rows="3" placeholder="Provide distinct features, color, brand..." required></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-success" style="width: 100%;">Submit Report</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       6. CLAIM MODAL
+       ========================================================================= -->
+  <div id="claim-modal" class="modal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeModal('claim-modal')">&times;</button>
+      <h2 style="margin-bottom: 1rem;">Claim Belonging</h2>
+      <p id="claim-title" style="color: #4444aa; font-weight: bold; margin-bottom: 1rem;"></p>
+
+      <form onsubmit="handleClaimSubmit(event)">
+        <div class="form-group">
+          <label>Proof of Ownership / Details</label>
+          <textarea id="claim-proof" rows="3" placeholder="Describe identifying marks or contents inside to verify ownership..." required></textarea>
+        </div>
+        <div class="form-group">
+          <label>Your Phone / Roll Number</label>
+          <input type="text" id="claim-contact-input" placeholder="e.g. 7488402331 / BCA/40138/24" required>
+        </div>
+        <button type="submit" class="btn btn-success" style="width: 100%;">Submit Claim</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       7. FOOTER
+       ========================================================================= -->
+  <footer>
+    <div class="container">
+      Smart Campus Lost &amp; Found Portal &bull; BIT Mesra
+    </div>
+  </footer>
+
+  <!-- External JavaScript Logic -->
+  <script src="script.js"></script>
+</body>
+</html>

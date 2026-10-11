@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Smart Campus Lost &amp; Found</title>
+
+  <!-- External Stylesheet for Login Page -->
+  <link rel="stylesheet" href="login.css">
+</head>
+
+<body>
+
+  <div class="card-login">
+    <!-- Header -->
+    <div class="header-box">
+      <div class="header-title">
+        🔍 Smart Campus <span class="header-badge">BIT MESRA</span>
+      </div>
+      <div class="header-desc">Lost &amp; Found Portal Login</div>
+    </div>
+
+    <!-- Tabs: Sign In / Register -->
+    <div class="tab-row">
+      <button type="button" class="tab-btn active" id="tab-login" onclick="showTab('login')">Sign In</button>
+      <button type="button" class="tab-btn" id="tab-register" onclick="showTab('register')">Register</button>
+    </div>
+
+    <div class="form-box">
+      <!-- Error & Success Messages -->
+      <div id="msg-error" class="msg-box msg-error"></div>
+      <div id="msg-success" class="msg-box msg-success"></div>
+
+      <!-- 1. SIGN IN FORM -->
+      <form id="form-login" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="login-email">Email Address</label>
+          <input type="email" id="login-email" placeholder="student@bitmesra.ac.in" required>
+        </div>
+
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" placeholder="Enter your password" required>
+        </div>
+
+        <button type="submit" class="btn-main">Sign In to Face of Project</button>
+
+        <!-- Quick 1-Click Fill for Easy Testing -->
+        <div class="demo-box">
+          <p><strong>💡 Quick Test Account:</strong></p>
+          <p>Email: <code>student@bitmesra.ac.in</code> | Pass: <code>Student123</code></p>
+          <button type="button" class="btn-quick-fill" onclick="fillTestAccount()">⚡ Fill Test Credentials</button>
+        </div>
+      </form>
+
+      <!-- 2. REGISTER FORM -->
+      <form id="form-register" style="display: none;" onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label for="reg-name">Full Name</label>
+          <input type="text" id="reg-name" placeholder="Rishav Raj" required minlength="2">
+        </div>
+
+        <div class="form-group">
+          <label for="reg-email">Email Address</label>
+          <input type="email" id="reg-email" placeholder="student@bitmesra.ac.in" required>
+        </div>
+
+        <div class="form-group">
+          <label for="reg-phone">Phone Number</label>
+          <input type="text" id="reg-phone" placeholder="7488402331">
+          <div class="hint-text">Used for contacting regarding lost &amp; found items</div>
+        </div>
+
+        <div class="form-group">
+          <label for="reg-password">Password</label>
+          <input type="password" id="reg-password" placeholder="At least 8 chars, 1 uppercase, 1 number" required minlength="8">
+          <div class="hint-text">Must have 8+ characters, 1 uppercase (A-Z) and 1 number (0-9)</div>
+        </div>
+
+        <button type="submit" class="btn-main">Create Account &amp; Login</button>
+      </form>
+    </div>
+
+    <div class="card-footer">
+      Compatible with anshu00004/lost-and-found
+    </div>
+  </div>
+
+  <a href="index.html" class="link-portal">← Skip to Face of Project without login</a>
+
+  <!-- External JavaScript Logic for Login Page -->
+  <script src="login.js"></script>
+</body>
+</html>

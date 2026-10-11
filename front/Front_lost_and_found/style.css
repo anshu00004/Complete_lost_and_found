@@ -1,0 +1,493 @@
+/* ==========================================================================
+   STYLE.CSS — SIMPLE & MINIMAL DESIGN
+   
+   Clean layout with:
+   • White background
+   • Dark readable text
+   • Clear borders and simple badges
+   • Lost Items and Found Items as separate main sections
+   • Electronics & Other Items nested cleanly INSIDE each section
+   • User Login / Auth controls in header
+   ========================================================================== */
+
+/* ── Basic Reset ── */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  background-color: #ffffff;
+  color: #333333;
+  line-height: 1.6;
+  padding-bottom: 2rem;
+}
+
+/* ── Container ── */
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* ── Header ── */
+header {
+  background: #f5f5f5;
+  border-bottom: 2px solid #ddd;
+  padding: 0.8rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.badge-campus {
+  font-size: 0.7rem;
+  background: #e8e8e8;
+  color: #555;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+/* ── Nav User Auth Styles ── */
+.user-greeting {
+  font-size: 0.85rem;
+  color: #374151;
+  font-weight: bold;
+  background: #e5e7eb;
+  padding: 0.35rem 0.7rem;
+  border-radius: 4px;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid #9ca3af;
+  color: #4b5563;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.btn-outline:hover {
+  background: #e5e7eb;
+  color: #1f2937;
+}
+
+.btn-auth-link {
+  background: #2563eb;
+  color: #ffffff;
+  text-decoration: none;
+  padding: 0.45rem 0.85rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.btn-auth-link:hover {
+  background: #1d4ed8;
+}
+
+/* ── Hero Section ── */
+.hero {
+  text-align: center;
+  padding: 1.5rem 0 1rem 0;
+}
+
+.hero h1 {
+  font-size: 1.8rem;
+  margin-bottom: 0.3rem;
+  color: #222;
+}
+
+.hero p {
+  color: #666;
+  font-size: 0.95rem;
+}
+
+/* ── Controls (Search & Hierarchical Filters) ── */
+.controls {
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.search-row {
+  margin-bottom: 0.8rem;
+}
+
+.filter-group {
+  margin-bottom: 0.6rem;
+}
+
+.filter-label {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #555;
+  margin-bottom: 0.4rem;
+  display: block;
+}
+
+.filter-chips {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.chip {
+  background: #fff;
+  border: 1px solid #ccc;
+  color: #444;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.chip:hover {
+  background: #f0f0f0;
+}
+
+.chip.active {
+  background: #4444aa;
+  color: #fff;
+  border-color: #4444aa;
+  font-weight: bold;
+}
+
+/* Sub-filter row clearly placed beneath main filter */
+.sub-filter-row {
+  margin-top: 0.7rem;
+  padding-top: 0.7rem;
+  border-top: 1px dashed #d1d5db;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.sub-filter-label {
+  font-size: 0.85rem;
+  color: #555;
+  font-weight: bold;
+}
+
+.chip-sub.active {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+/* ── Form Inputs ── */
+input[type="text"], input[type="date"], select, textarea {
+  width: 100%;
+  background: #fff;
+  border: 1px solid #ccc;
+  color: #333;
+  padding: 0.5rem 0.7rem;
+  border-radius: 4px;
+  outline: none;
+  font-size: 0.9rem;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #4444aa;
+}
+
+/* ── Buttons ── */
+.btn {
+  background: #4444aa;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+.btn:hover {
+  background: #333399;
+}
+
+.btn-success {
+  background: #2e8b57;
+}
+
+.btn-success:hover {
+  background: #256d47;
+}
+
+/* ── MAIN SECTIONS: Lost Items & Found Items ── */
+.section-container {
+  background: #fafafa;
+  border: 1px solid #dcdcdc;
+  border-radius: 8px;
+  padding: 1.2rem;
+  margin-bottom: 2rem;
+}
+
+.section-container.lost-section {
+  border-left: 6px solid #dc2626; /* Red border for Lost */
+}
+
+.section-container.found-section {
+  border-left: 6px solid #16a34a; /* Green border for Found */
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.2rem;
+}
+
+.section-title {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-badge {
+  font-size: 0.75rem;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.badge-lost-header {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.badge-found-header {
+  background: #dcfce7;
+  color: #166534;
+}
+
+/* ── CATEGORY BLOCKS: Electronics & Other Items INSIDE Sections ── */
+.category-block {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+.category-block:last-child {
+  margin-bottom: 0;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.category-name {
+  font-size: 1rem;
+  font-weight: bold;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.category-count {
+  font-size: 0.75rem;
+  background: #f1f5f9;
+  color: #64748b;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: normal;
+}
+
+/* ── Items Grid ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+/* ── Item Card ── */
+.card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.card:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.card-img {
+  height: 140px;
+  width: 100%;
+  object-fit: cover;
+  background: #f1f5f9;
+}
+
+.card-body {
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.tag-lost {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+.tag-found {
+  background: #dcfce7;
+  color: #16a34a;
+  border: 1px solid #86efac;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+.card-title {
+  font-size: 0.95rem;
+  font-weight: bold;
+  margin-bottom: 0.3rem;
+  color: #1f2937;
+}
+
+.card-desc {
+  color: #4b5563;
+  font-size: 0.82rem;
+  margin-bottom: 0.6rem;
+}
+
+.card-info {
+  font-size: 0.78rem;
+  color: #4b5563;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 0.5rem;
+  margin-top: auto;
+  margin-bottom: 0.6rem;
+}
+
+.card-btn {
+  width: 100%;
+  padding: 0.45rem;
+  font-size: 0.82rem;
+}
+
+.empty-category-msg {
+  padding: 1.2rem;
+  text-align: center;
+  color: #888;
+  font-size: 0.85rem;
+  background: #fafafa;
+  border-radius: 4px;
+}
+
+/* ── Modal (Popup) ── */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.active {
+  display: flex;
+}
+
+.modal-box {
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  width: 90%;
+  max-width: 480px;
+  padding: 1.2rem;
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-close {
+  position: absolute;
+  top: 0.8rem;
+  right: 0.8rem;
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+
+.form-group {
+  margin-bottom: 0.8rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.85rem;
+  color: #555;
+  margin-bottom: 0.2rem;
+}
+
+/* ── Footer ── */
+footer {
+  margin-top: 2rem;
+  text-align: center;
+  color: #888;
+  font-size: 0.8rem;
+  border-top: 1px solid #ddd;
+  padding-top: 1rem;
+}
