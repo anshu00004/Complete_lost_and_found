@@ -18,6 +18,7 @@ class UserRegister(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=128)
     phone: Optional[str] = Field(None, max_length=20, examples=["+91-9876543210"])
+    Roll_number: Optional[str] = Field(None, max_length=50, examples=["BCA/10001/23"]) #Add the changes here
 
     @field_validator("password")
     @classmethod
@@ -67,7 +68,7 @@ class UserBase(BaseModel):
     full_name: str
     email: EmailStr
     phone: Optional[str] = None
-
+    Roll_number: Optional[str]= None # make neceassry changes here 
 
 class UserResponse(UserBase):
     id: int
@@ -81,6 +82,7 @@ class UserResponse(UserBase):
 class UserUpdate(BaseModel):
     full_name: Optional[str] = Field(None, min_length=2, max_length=100)
     phone: Optional[str] = Field(None, max_length=20)
+    Roll_Number: Optional[str] =Field(None, max_length=50) #make changes here
 
 
 # ---------------------------------------------------------------------------

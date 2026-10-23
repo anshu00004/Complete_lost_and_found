@@ -331,7 +331,21 @@ function createCardHtml(item) {
   const isLost = item.type === 'Lost';
   const tagClass = isLost ? 'tag-lost' : 'tag-found';
   const tagText = isLost ? 'LOST' : 'FOUND';
-
+let actionButtonHtml = '';
+  if (isLost) {
+    actionButtonHtml = `
+      <button class="btn card-btn" onclick="alert('Contact the owner directly using the phone number above!')">
+        📞 Contact Owner
+      </button>
+    `;
+  
+} else {
+    actionButtonHtml = `
+      <button class="btn card-btn" onclick="openClaim(${item.id}, '${escapeHtml(item.name.replace(/'/g, "\\'"))}')">
+        🤝 Claim Item
+      </button>
+    `;
+  }
   return `
     <div class="card">
       <img 
@@ -354,9 +368,7 @@ function createCardHtml(item) {
           📞 <strong>Contact:</strong> ${escapeHtml(item.contact)}
         </div>
 
-        <button class="btn card-btn" onclick="openClaim('${escapeHtml(item.name.replace(/'/g, "\\'"))}')">
-          🤝 Claim Item
-        </button>
+        ${actionButtonHtml}
       </div>
     </div>
   `;
@@ -391,15 +403,47 @@ async function handleReportSubmit(e) {
 }
 
 // ── 7. CLAIM FORM HANDLER ──
-function openClaim(itemName) {
+let selectedItemId = null; // Item ki ID track karne ke liye
+
+function openClaim(itemId, itemName) {
+  selectedItemId = itemId; // Sahi item ID store hogi
   document.getElementById('claim-title').textContent = `Claiming: "${itemName}"`;
+  
+  // Modal open karne se pehle form fields ko reset/clear kar sakte hain
   openModal('claim-modal');
 }
 
 async function handleClaimSubmit(e) {
   e.preventDefault();
-  closeModal('claim-modal');
-  alert('Claim request submitted to owner/admin!');
+
+  // Form ke inputs se exact user data nikalna
+  const proofDescription = document.getElementById('claim-proof').value.trim();
+  const rollNumberInput = document.getElementById('claim-contact').value.trim();
+
+  // LocalStorage se token nikal kar 'bearer_' ya 'bearer ' hata kar clean karna
+  let rawToken = localStorage.getItem('campus_token') || 
+                 localStorage.getItem('access_token') || 
+                 localStorage.getItem('token') || '';
+  
+  const cleanToken = rawToken.replace(/^bearer[_-]/i, '').trim();
+  
+  try {
+ 
+
+    if (response.ok) {
+      const data = await response.json();
+      closeModal('claim-modal');
+      document.getElementById('claim-form').reset(); // Form clear karna
+      alert('Claim request successfully submitted to admin database!');
+    } else {
+      const err = await response.json();
+      alert('Error: ' + (err.detail || 'Failed to submit claim'));
+    }
+  } catch (error) {
+    console.error('Network error:', error);
+    closeModal('claim-modal');
+    alert('Failed to connect to the server!');
+  }
 }
 
 // ── 8. MODAL UTILITIES ──

@@ -38,17 +38,19 @@ async function sendLoginData(email, password) {
 }
 const DEFAULT_USERS = [
   {
-    full_name: "Rishav Raj",
+    full_name: "Student User",
     email: "student@bitmesra.ac.in",
     password: "Student123",
-    phone: "7488402331",
+    phone: "Not Provided",
+    Roll_Number: "BCA/10001/23",
     role: "user"
+
   },
   {
     full_name: "Campus Admin",
     email: "admin@bitmesra.ac.in",
     password: "Admin123",
-    phone: "9142433107",
+    phone: null,
     role: "admin"
   }
 ];
@@ -105,39 +107,68 @@ function fillTestAccount() {
 }
 
 // ── 4. SIGN IN FORM HANDLER ──
-function handleLogin(e) {
+async function handleLogin(e) {
   e.preventDefault();
   clearMessages();
 
   const email = document.getElementById('login-email').value.trim().toLowerCase();
   const password = document.getElementById('login-password').value;
 
-  const users = getUsers();
-  const matchedUser = users.find(u => u.email.toLowerCase() === email && u.password === password);
+  try {
+    // Real FastAPI backend se login karke token lena
+    const response = await fetch('http://127.0.0.1:8000/api/v1/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email: email, password: password })
+    });
 
-  if (!matchedUser) {
-    showError('Invalid email or password. Please try again.');
-    return;
+    const data = await response.json();
+
+    if (response.ok) {
+      // Backend se jo real token aur user data mila, use localStorage mein save karna
+      localStorage.setItem('campus_token', data.access_token || data.token);
+      localStorage.setItem('campus_user', JSON.stringify({
+        full_name: data.full_name || email.split('@')[0],
+        email: email,
+        role: data.role || 'user'
+      }));
+
+      showSuccess(`Welcome back! Redirecting to Portal...`);
+
+      setTimeout(() => {
+        window.location.href = 'index.html';
+      }, 900);
+    } else {
+      // Fallback agar backend route alag ho toh local users se match karein
+      const users = getUsers();
+      const matchedUser = users.find(u => u.email.toLowerCase() === email && u.password === password);
+
+      if (!matchedUser) {
+        showError(data.detail || 'Invalid email or password. Please try again.');
+        return;
+      }
+
+      // Agar fallback chale toh dummy token ki jagah standard token
+      const token = 'bearer_' + btoa(matchedUser.email + ':' + Date.now());
+      localStorage.setItem('campus_token', token);
+      localStorage.setItem('campus_user', JSON.stringify({
+        full_name: matchedUser.full_name,
+        email: matchedUser.email,
+        phone: matchedUser.phone,
+        role: matchedUser.role || 'user'
+      }));
+
+      showSuccess(`Welcome back, ${matchedUser.full_name}! Redirecting...`);
+      setTimeout(() => {
+        window.location.href = 'index.html';
+      }, 900);
+    }
+  } catch (error) {
+    console.error('Login network error:', error);
+    showError('Failed to connect to backend server. Make sure Uvicorn is running.');
   }
-
-  // Create session token (compatible with TokenResponse schema)
-  const token = 'bearer_' + btoa(matchedUser.email + ':' + Date.now());
-
-  // Store in localStorage for index.html to read
-  localStorage.setItem('campus_token', token);
-  localStorage.setItem('campus_user', JSON.stringify({
-    full_name: matchedUser.full_name,
-    email: matchedUser.email,
-    phone: matchedUser.phone,
-    role: matchedUser.role || 'user'
-  }));
-
-  showSuccess(`Welcome back, ${matchedUser.full_name}! Redirecting to Face of Project...`);
-
-  // Redirect to main Face of Project page
-  setTimeout(() => {
-    window.location.href = 'index.html';
-  }, 900);
 }
 
 // ── 5. REGISTRATION FORM HANDLER ──
@@ -223,3 +254,11 @@ function clearMessages() {
 document.addEventListener('DOMContentLoaded', () => {
   getUsers();
 });
+function togglePasswordVisibility() {
+    const passwordInput = document.getElementById("login-password");
+    if (passwordInput.type === "password") {
+        passwordInput.type = "text";
+    } else {
+        passwordInput.type = "password";
+    }
+}
