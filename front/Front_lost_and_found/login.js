@@ -56,14 +56,14 @@ async function handleLogin(e) {
   }
 
   try {
-    // FastAPI OAuth2 login expects form data, not JSON.
+    // Backend /auth/login uses OAuth2PasswordRequestForm — send form-data with 'username' = email.
     const response = await fetch(`${AUTH_URL}/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded"
       },
       body: new URLSearchParams({
-        username: email,
+        username: email,   // OAuth2 spec uses 'username' even though it's an email
         password: password
       })
     });
@@ -85,8 +85,13 @@ async function handleLogin(e) {
       return;
     }
 
-    // Store the actual backend-issued token.
+    // Store the actual backend-issued tokens.
     localStorage.setItem("campus_token", token);
+
+    const refreshToken = data.refresh_token;
+    if (refreshToken) {
+      localStorage.setItem("campus_refresh_token", refreshToken);
+    }
 
     // Clear any old demo-session data.
     localStorage.removeItem("lostfound_users");

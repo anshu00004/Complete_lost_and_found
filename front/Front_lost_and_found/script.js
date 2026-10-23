@@ -39,6 +39,57 @@ function authHeaders(includeJson = false) {
   return headers;
 }
 
+// Silently refresh the access token using the stored refresh token.
+// Returns the new access token on success, or null on failure.
+async function refreshAccessToken() {
+  const refreshToken = localStorage.getItem('campus_refresh_token');
+  if (!refreshToken) return null;
+
+  try {
+    const response = await fetch(`${API_BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken })
+    });
+
+    if (!response.ok) {
+      // Refresh token itself is expired/revoked — clear storage
+      localStorage.removeItem('campus_token');
+      localStorage.removeItem('campus_refresh_token');
+      return null;
+    }
+
+    const data = await response.json();
+    const newToken = data.access_token;
+    const newRefresh = data.refresh_token;
+
+    if (newToken) localStorage.setItem('campus_token', newToken);
+    if (newRefresh) localStorage.setItem('campus_refresh_token', newRefresh);
+
+    return newToken || null;
+  } catch {
+    return null;
+  }
+}
+
+// Wrapper around fetch() that automatically retries once after refreshing
+// the access token when a 401 is returned.
+async function fetchWithAuth(url, options = {}) {
+  options.headers = { ...authHeaders(), ...(options.headers || {}) };
+  let response = await fetch(url, options);
+
+  if (response.status === 401) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      options.headers.Authorization = `Bearer ${newToken}`;
+      response = await fetch(url, options);
+    }
+  }
+
+  return response;
+}
+
+
 
 document.addEventListener('DOMContentLoaded', () => {
   checkAuthState();
@@ -113,8 +164,8 @@ async function loadItemsFromBackend() {
     };
 
     const [lostResponse, foundResponse] = await Promise.all([
-      fetch(`${API_BASE}/lost-items/`, { headers }),
-      fetch(`${API_BASE}/found-items/`, { headers })
+      fetchWithAuth(`${API_BASE}/lost-items/`),
+      fetchWithAuth(`${API_BASE}/found-items/`)
     ]);
 
     if (lostResponse.status === 401 || foundResponse.status === 401) {
@@ -227,6 +278,7 @@ function checkAuthState() {
 
 function logoutUser() {
   localStorage.removeItem('campus_token');
+  localStorage.removeItem('campus_refresh_token');
   localStorage.removeItem('campus_user');
 
   checkAuthState();

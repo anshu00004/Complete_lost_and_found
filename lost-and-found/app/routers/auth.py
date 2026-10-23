@@ -56,21 +56,37 @@ def register(payload: schemas.UserRegister, db: Session = Depends(get_db)):
 
 @router.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # Swagger form_data.username me email bhejta hai
+    # Swagger/frontend sends email in the username field
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
-    
+
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
 
-    access_token = create_access_token(str(user.id), role=user.role)
-    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is deactivated. Contact support.",
+        )
+
+    # BUG FIX: pass role.value (str), not the enum object
+    access_token = create_access_token(user.id, role=user.role.value)
+
+    # Generate and persist refresh token
+    refresh_token_str = create_refresh_token(user.id)
+    expires = datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
+    db.add(models.RefreshToken(token=refresh_token_str, user_id=user.id, expires_at=expires))
+    db.commit()
+
     return {
         "access_token": access_token,
-        "token_type": "bearer"
+        "refresh_token": refresh_token_str,
+        "token_type": "bearer",
+        "expires_in": settings.access_token_expire_minutes * 60,
     }
+
 
 
 # ---------------------------------------------------------------------------
