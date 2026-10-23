@@ -1,111 +1,187 @@
-/* ==========================================================================
-   SCRIPT.JS — JavaScript Logic for Smart Campus Lost & Found Portal
-   
-   ORGANIZATION:
-   • Top Level: Lost Items & Found Items
-   • Inside Each: Electronics & Other Items (NOT side by side!)
-   • Authentication: Connects to login.html and FastAPI backend
-   ========================================================================== */
+const API_BASE = 'http://127.0.0.1:8000/api/v1';
 
-// ── 1. SAMPLE DATA ──
-let items = [
-  // --- LOST ITEMS: Electronics ---
-  {
-    id: 1,
-    type: 'Lost',
-    name: 'Apple MacBook Air M2 (Midnight)',
-    category: 'Electronics',
-    location: 'Computer Lab 3, Academic Block',
-    date: '2026-09-28',
-    contact: '7488402331',
-    desc: 'Left in Computer Lab 3 near desk #14. Has a transparent protective shell.',
-    img: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=500&q=80'
-  },
-  {
-    id: 2,
-    type: 'Lost',
-    name: 'Sony WH-1000XM5 Headphones',
-    category: 'Electronics',
-    location: 'Student Canteen Lawn',
-    date: '2026-09-29',
-    contact: '7903164020',
-    desc: 'Silver noise canceling headphones inside a dark grey zippered hard case.',
-    img: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=500&q=80'
-  },
+let items = [];
+let currentMainFilter = 'all';
+let currentCategoryFilter = 'all';
+let selectedItemId = null;
 
-  // --- LOST ITEMS: Other Items ---
-  {
-    id: 3,
-    type: 'Lost',
-    name: 'Student ID Card & Room Keys',
-    category: 'Other Items',
-    location: 'Library Reading Hall 2nd Floor',
-    date: '2026-09-30',
-    contact: '8969945857',
-    desc: 'BIT Mesra student ID card with a bunch of 3 keys attached to a blue lanyard.',
-    img: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=500&q=80'
-  },
+// ── 1. AUTHENTICATION HELPERS ──
 
-  // --- FOUND ITEMS: Electronics ---
-  {
-    id: 4,
-    type: 'Found',
-    name: 'Casio Scientific Calculator fx-991CW',
-    category: 'Electronics',
-    location: 'Mechanical Dept Seminar Hall',
-    date: '2026-09-29',
-    contact: '9142433107',
-    desc: 'Black scientific calculator with slide-on case left on front row chair.',
-    img: 'https://images.unsplash.com/photo-1594980596870-8aa52a78d8cd?auto=format&fit=crop&w=500&q=80'
-  },
+function getAuthToken() {
+  const rawToken =
+    localStorage.getItem('campus_token') ||
+    localStorage.getItem('access_token') ||
+    localStorage.getItem('token') ||
+    '';
 
-  // --- FOUND ITEMS: Other Items ---
-  {
-    id: 5,
-    type: 'Found',
-    name: 'Black Leather Wallet with Cards',
-    category: 'Other Items',
-    location: 'Central Library 1st Floor',
-    date: '2026-09-29',
-    contact: '9142433107',
-    desc: 'Found near reading table. Contains student ID card belonging to Rishav Raj.',
-    img: 'https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=500&q=80'
-  },
-  {
-    id: 6,
-    type: 'Found',
-    name: 'Hydro Flask Water Bottle',
-    category: 'Other Items',
-    location: 'Sports Complex Basketball Court',
-    date: '2026-09-27',
-    contact: '8969945857',
-    desc: 'Blue 32oz Hydroflask water bottle with mountain stickers found on bench.',
-    img: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=500&q=80'
+  const token = rawToken.replace(/^Bearer\s+/i, '').trim();
+
+  if (!token || /^bearer[_-]/i.test(token)) {
+    return '';
   }
-];
 
-// Current filter state
-let currentMainFilter = 'all';       // 'all', 'Lost', or 'Found'
-let currentCategoryFilter = 'all';   // 'all', 'Electronics', or 'Other Items'
+  return token;
+}
 
-// ── 2. INITIALIZATION ON PAGE LOAD ──
+function authHeaders(includeJson = false) {
+  const headers = {};
+
+  if (includeJson) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  const token = getAuthToken();
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
+}
+
+
 document.addEventListener('DOMContentLoaded', () => {
-  // Check user login session
   checkAuthState();
 
-  // Set default date in modal to today
   const dateInput = document.getElementById('item-date');
+
   if (dateInput) {
     dateInput.value = new Date().toISOString().split('T')[0];
   }
 
-  // Initial render of all sections
-  filterItems();
+  loadItemsFromBackend();
 });
 
-// ── 3. AUTHENTICATION & SESSION STATE ──
+
+function normalizeItem(item, type) {
+  const rawCategory = String(item.category || '').toLowerCase();
+
+  return {
+    id: Number(item.id),
+    type: type,
+    name: item.title || item.name || 'Untitled item',
+
+    category:
+      rawCategory === 'electronics'
+        ? 'Electronics'
+        : 'Other Items',
+
+    location:
+      item.location_lost ||
+      item.location_found ||
+      item.location ||
+      '',
+
+    date:
+      item.date_lost ||
+      item.date_found ||
+      item.created_at ||
+      '',
+
+    contact:
+      item.reporter?.phone ||
+      item.contact ||
+      'Contact through the portal',
+
+    desc: item.description || item.desc || '',
+    img: item.image_url || item.img || ''
+  };
+}
+
+
+async function loadItemsFromBackend() {
+  const container = document.getElementById('portal-content');
+
+  if (container) {
+    container.innerHTML =
+      '<p style="padding:1rem;">Loading items...</p>';
+  }
+
+  try {
+    // Get the token saved during login
+    const rawToken = localStorage.getItem('campus_token');
+
+    if (!rawToken) {
+      throw new Error('You are not logged in. Please log in again.');
+    }
+
+    // Handle tokens stored either with or without "Bearer "
+    const token = rawToken.replace(/^Bearer\s+/i, '').replace(/^"+|"+$/g, '');
+
+    const headers = {
+      Authorization: `Bearer ${token}`
+    };
+
+    const [lostResponse, foundResponse] = await Promise.all([
+      fetch(`${API_BASE}/lost-items/`, { headers }),
+      fetch(`${API_BASE}/found-items/`, { headers })
+    ]);
+
+    if (lostResponse.status === 401 || foundResponse.status === 401) {
+      throw new Error(
+        'Your session is invalid or expired. Please log out and log in again.'
+      );
+    }
+
+    if (!lostResponse.ok || !foundResponse.ok) {
+      throw new Error(
+        `API error. Lost items: ${lostResponse.status}; ` +
+        `Found items: ${foundResponse.status}.`
+      );
+    }
+
+    const [lostData, foundData] = await Promise.all([
+      lostResponse.json(),
+      foundResponse.json()
+    ]);
+
+    // Your API response may contain { items: [...] } rather than a raw array
+    const lostItems = Array.isArray(lostData)
+      ? lostData
+      : lostData.items;
+
+    const foundItems = Array.isArray(foundData)
+      ? foundData
+      : foundData.items;
+
+    if (!Array.isArray(lostItems) || !Array.isArray(foundItems)) {
+      throw new Error(
+        'Unexpected API response format. Check the Swagger response.'
+      );
+    }
+
+    items = [
+      ...lostItems.map(item => normalizeItem(item, 'Lost')),
+      ...foundItems.map(item => normalizeItem(item, 'Found'))
+    ];
+
+    filterItems();
+
+  } catch (error) {
+    console.error('Failed to load items:', error);
+
+    if (container) {
+      container.innerHTML = `
+        <div style="padding:1.5rem;color:#b91c1c;">
+          <h3>Unable to load items</h3>
+          <p>${escapeHtml(error.message)}</p>
+          <button
+            type="button"
+            class="btn"
+            onclick="loadItemsFromBackend()">
+            Retry
+          </button>
+        </div>
+      `;
+    }
+  }
+}
+
+
+
 function checkAuthState() {
   const userArea = document.getElementById('nav-user-area');
+
   if (!userArea) return;
 
   const token = localStorage.getItem('campus_token');
@@ -117,93 +193,112 @@ function checkAuthState() {
       const displayName = user.full_name || user.email || 'Student';
 
       userArea.innerHTML = `
-        <span class="user-greeting">👤 ${escapeHtml(displayName)}</span>
-        <button type="button" class="btn-outline" onclick="logoutUser()" title="Sign out of your account">Log Out</button>
+        <span class="user-greeting">
+          👤 ${escapeHtml(displayName)}
+        </span>
+
+        <button
+          type="button"
+          class="btn-outline"
+          onclick="logoutUser()">
+          Log Out
+        </button>
       `;
 
-      // Pre-fill contact info in report form if available
       const contactInput = document.getElementById('item-contact');
+
       if (contactInput && !contactInput.value) {
         contactInput.value = user.phone || user.email || '';
       }
+
       return;
-    } catch (e) {
-      console.error('Error parsing user data:', e);
+
+    } catch (error) {
+      console.error('Error parsing user data:', error);
     }
   }
 
-  // Not logged in: Show Login button
   userArea.innerHTML = `
-    <a href="login.html" class="btn-auth-link">🔐 Login / Register</a>
+    <a href="login.html" class="btn-auth-link">
+      🔐 Login / Register
+    </a>
   `;
 }
 
 function logoutUser() {
   localStorage.removeItem('campus_token');
   localStorage.removeItem('campus_user');
+
   checkAuthState();
+
   alert('You have been logged out.');
 }
 
-// ── 4. HIERARCHICAL FILTER HANDLERS ──
 
-/**
- * Sets top-level filter: All, Lost Items, or Found Items
- */
 function setMainFilter(mainType, element) {
   currentMainFilter = mainType;
 
-  // Update active state on main filter buttons
-  document.querySelectorAll('#chip-main-all, #chip-main-lost, #chip-main-found')
-    .forEach(btn => btn.classList.remove('active'));
-  element.classList.add('active');
+  document
+    .querySelectorAll(
+      '#chip-main-all, #chip-main-lost, #chip-main-found'
+    )
+    .forEach(button => button.classList.remove('active'));
 
-  // Update sub-filter label to show that categories are INSIDE the selected status
+  if (element) {
+    element.classList.add('active');
+  }
+
   const subLabel = document.getElementById('sub-filter-label');
-  if (mainType === 'Lost') {
-    subLabel.textContent = 'Categories inside Lost Items:';
-  } else if (mainType === 'Found') {
-    subLabel.textContent = 'Categories inside Found Items:';
-  } else {
-    subLabel.textContent = 'Categories inside items:';
+
+  if (subLabel) {
+    if (mainType === 'Lost') {
+      subLabel.textContent = 'Categories inside Lost Items:';
+    } else if (mainType === 'Found') {
+      subLabel.textContent = 'Categories inside Found Items:';
+    } else {
+      subLabel.textContent = 'Categories inside items:';
+    }
   }
 
   filterItems();
 }
 
-/**
- * Sets category sub-filter: All Categories, Electronics, or Other Items
- */
+
 function setCategoryFilter(category, element) {
   currentCategoryFilter = category;
 
-  // Update active state on category chips
-  document.querySelectorAll('.chip-sub').forEach(btn => btn.classList.remove('active'));
-  element.classList.add('active');
+  document
+    .querySelectorAll('.chip-sub')
+    .forEach(button => button.classList.remove('active'));
+
+  if (element) {
+    element.classList.add('active');
+  }
 
   filterItems();
 }
 
-/**
- * Main filter function combining Search + Main Status + Category inside Status
- */
+
 function filterItems() {
-  const query = document.getElementById('search-input').value.toLowerCase().trim();
+  const searchInput = document.getElementById('search-input');
 
-  // Filter the items list
+  const query = (
+    searchInput ? searchInput.value : ''
+  ).toLowerCase().trim();
+
   const filtered = items.filter(item => {
-    // 1. Matches Main Status (Lost / Found / All)
-    const matchesMain = (currentMainFilter === 'all') || (item.type === currentMainFilter);
+    const matchesMain =
+      currentMainFilter === 'all' ||
+      item.type === currentMainFilter;
 
-    // 2. Matches Category inside Status (Electronics / Other Items / All)
-    const matchesCategory = (currentCategoryFilter === 'all') || 
-                            (item.category === currentCategoryFilter) ||
-                            (currentCategoryFilter === 'Other Items' && item.category !== 'Electronics');
+    const matchesCategory =
+      currentCategoryFilter === 'all' ||
+      item.category === currentCategoryFilter;
 
-    // 3. Matches Search query text
-    const matchesQuery = item.name.toLowerCase().includes(query) ||
-                         item.desc.toLowerCase().includes(query) ||
-                         item.location.toLowerCase().includes(query);
+    const matchesQuery =
+      String(item.name).toLowerCase().includes(query) ||
+      String(item.desc).toLowerCase().includes(query) ||
+      String(item.location).toLowerCase().includes(query);
 
     return matchesMain && matchesCategory && matchesQuery;
   });
@@ -211,19 +306,24 @@ function filterItems() {
   renderSections(filtered);
 }
 
-// ── 5. RENDER SECTIONS (Lost Items & Found Items containing Electronics & Other Items) ──
 
-/**
- * Renders the sections so Electronics and Other Items are INSIDE Lost Items and Found Items
- */
 function renderSections(filteredList) {
   const container = document.getElementById('portal-content');
 
+  if (!container) return;
+
   if (filteredList.length === 0) {
     container.innerHTML = `
-      <div style="text-align: center; padding: 3rem; color: #888; background: #fafafa; border: 1px dashed #ccc; border-radius: 8px;">
+      <div style="
+        text-align:center;
+        padding:3rem;
+        color:#888;
+        background:#fafafa;
+        border:1px dashed #ccc;
+        border-radius:8px;
+      ">
         <h3>No matching items found</h3>
-        <p style="margin-top: 0.5rem; font-size: 0.9rem;">Try adjusting your search or category filter.</p>
+        <p>Try adjusting your search or category filter.</p>
       </div>
     `;
     return;
@@ -231,141 +331,170 @@ function renderSections(filteredList) {
 
   let html = '';
 
-  // 1. SECTION: LOST ITEMS (render if user chose 'all' or 'Lost')
-  if (currentMainFilter === 'all' || currentMainFilter === 'Lost') {
-    const lostItems = filteredList.filter(i => i.type === 'Lost');
-    const lostElectronics = lostItems.filter(i => i.category === 'Electronics');
-    const lostOther = lostItems.filter(i => i.category !== 'Electronics');
+  const sectionTypes = [
+    {
+      type: 'Lost',
+      title: '🔴 Lost Items',
+      className: 'lost-section',
+      badge: 'badge-lost-header'
+    },
+    {
+      type: 'Found',
+      title: '🟢 Found Items',
+      className: 'found-section',
+      badge: 'badge-found-header'
+    }
+  ];
 
-    // Only render section if it has matching items
-    if (lostItems.length > 0) {
+  sectionTypes.forEach(section => {
+    if (
+      currentMainFilter !== 'all' &&
+      currentMainFilter !== section.type
+    ) {
+      return;
+    }
+
+    const sectionItems = filteredList.filter(
+      item => item.type === section.type
+    );
+
+    if (sectionItems.length === 0) return;
+
+    const electronics = sectionItems.filter(
+      item => item.category === 'Electronics'
+    );
+
+    const otherItems = sectionItems.filter(
+      item => item.category !== 'Electronics'
+    );
+
+    html += `
+      <div class="section-container ${section.className}">
+        <div class="section-header">
+          <div class="section-title">${section.title}</div>
+
+          <span class="section-badge ${section.badge}">
+            ${sectionItems.length}
+            Item${sectionItems.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+    `;
+
+    if (
+      (currentCategoryFilter === 'all' ||
+        currentCategoryFilter === 'Electronics') &&
+      electronics.length > 0
+    ) {
       html += `
-        <div class="section-container lost-section">
-          <div class="section-header">
-            <div class="section-title">🔴 Lost Items</div>
-            <span class="section-badge badge-lost-header">${lostItems.length} Item${lostItems.length > 1 ? 's' : ''}</span>
+        <div class="category-block">
+          <div class="category-header">
+            <span class="category-name">💻 Electronics</span>
+            <span class="category-count">${electronics.length}</span>
           </div>
 
-          <!-- Electronics Category INSIDE Lost Items -->
-          ${(currentCategoryFilter === 'all' || currentCategoryFilter === 'Electronics') && lostElectronics.length > 0 ? `
-            <div class="category-block">
-              <div class="category-header">
-                <span class="category-name">💻 Electronics</span>
-                <span class="category-count">${lostElectronics.length}</span>
-              </div>
-              <div class="grid">
-                ${lostElectronics.map(item => createCardHtml(item)).join('')}
-              </div>
-            </div>
-          ` : ''}
-
-          <!-- Other Items Category INSIDE Lost Items -->
-          ${(currentCategoryFilter === 'all' || currentCategoryFilter === 'Other Items') && lostOther.length > 0 ? `
-            <div class="category-block">
-              <div class="category-header">
-                <span class="category-name">📦 Other Items</span>
-                <span class="category-count">${lostOther.length}</span>
-              </div>
-              <div class="grid">
-                ${lostOther.map(item => createCardHtml(item)).join('')}
-              </div>
-            </div>
-          ` : ''}
+          <div class="grid">
+            ${electronics.map(createCardHtml).join('')}
+          </div>
         </div>
       `;
     }
-  }
 
-  // 2. SECTION: FOUND ITEMS (render if user chose 'all' or 'Found')
-  if (currentMainFilter === 'all' || currentMainFilter === 'Found') {
-    const foundItems = filteredList.filter(i => i.type === 'Found');
-    const foundElectronics = foundItems.filter(i => i.category === 'Electronics');
-    const foundOther = foundItems.filter(i => i.category !== 'Electronics');
-
-    // Only render section if it has matching items
-    if (foundItems.length > 0) {
+    if (
+      (currentCategoryFilter === 'all' ||
+        currentCategoryFilter === 'Other Items') &&
+      otherItems.length > 0
+    ) {
       html += `
-        <div class="section-container found-section">
-          <div class="section-header">
-            <div class="section-title">🟢 Found Items</div>
-            <span class="section-badge badge-found-header">${foundItems.length} Item${foundItems.length > 1 ? 's' : ''}</span>
+        <div class="category-block">
+          <div class="category-header">
+            <span class="category-name">📦 Other Items</span>
+            <span class="category-count">${otherItems.length}</span>
           </div>
 
-          <!-- Electronics Category INSIDE Found Items -->
-          ${(currentCategoryFilter === 'all' || currentCategoryFilter === 'Electronics') && foundElectronics.length > 0 ? `
-            <div class="category-block">
-              <div class="category-header">
-                <span class="category-name">💻 Electronics</span>
-                <span class="category-count">${foundElectronics.length}</span>
-              </div>
-              <div class="grid">
-                ${foundElectronics.map(item => createCardHtml(item)).join('')}
-              </div>
-            </div>
-          ` : ''}
-
-          <!-- Other Items Category INSIDE Found Items -->
-          ${(currentCategoryFilter === 'all' || currentCategoryFilter === 'Other Items') && foundOther.length > 0 ? `
-            <div class="category-block">
-              <div class="category-header">
-                <span class="category-name">📦 Other Items</span>
-                <span class="category-count">${foundOther.length}</span>
-              </div>
-              <div class="grid">
-                ${foundOther.map(item => createCardHtml(item)).join('')}
-              </div>
-            </div>
-          ` : ''}
+          <div class="grid">
+            ${otherItems.map(createCardHtml).join('')}
+          </div>
         </div>
       `;
     }
-  }
+
+    html += '</div>';
+  });
 
   container.innerHTML = html;
 }
 
-/**
- * Creates HTML string for a single item card
- */
+
 function createCardHtml(item) {
   const isLost = item.type === 'Lost';
+
   const tagClass = isLost ? 'tag-lost' : 'tag-found';
   const tagText = isLost ? 'LOST' : 'FOUND';
-let actionButtonHtml = '';
+
+  const fallbackImage =
+    'https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?auto=format&fit=crop&w=500&q=80';
+
+  let actionButtonHtml = '';
+
   if (isLost) {
     actionButtonHtml = `
-      <button class="btn card-btn" onclick="alert('Contact the owner directly using the phone number above!')">
+      <button
+        type="button"
+        class="btn card-btn"
+        onclick="contactOwner(${Number(item.id)})">
         📞 Contact Owner
       </button>
     `;
-  
-} else {
+  } else {
     actionButtonHtml = `
-      <button class="btn card-btn" onclick="openClaim(${item.id}, '${escapeHtml(item.name.replace(/'/g, "\\'"))}')">
+      <button
+        type="button"
+        class="btn card-btn"
+        data-item-id="${Number(item.id)}"
+        data-item-name="${escapeHtml(String(item.name || ''))}"
+        onclick="openClaim(
+          Number(this.dataset.itemId),
+          this.dataset.itemName
+        )">
         🤝 Claim Item
       </button>
     `;
   }
+
   return `
     <div class="card">
-      <img 
-        src="${item.img}" 
-        class="card-img" 
-        alt="${escapeHtml(item.name)}" 
-        onerror="this.src='https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?auto=format&fit=crop&w=500&q=80'"
+      <img
+        src="${escapeHtml(item.img || fallbackImage)}"
+        class="card-img"
+        alt="${escapeHtml(item.name)}"
+        onerror="this.onerror=null;this.src='${fallbackImage}'"
       >
+
       <div class="card-body">
         <div class="card-meta">
-          <span class="${tagClass}">${tagText} &bull; ${escapeHtml(item.category)}</span>
-          <span style="font-size: 0.75rem; color: #888;">${item.date}</span>
+          <span class="${tagClass}">
+            ${tagText} &bull; ${escapeHtml(item.category)}
+          </span>
+
+          <span style="font-size:.75rem;color:#888;">
+            ${escapeHtml(formatDate(item.date))}
+          </span>
         </div>
 
-        <div class="card-title">${escapeHtml(item.name)}</div>
-        <div class="card-desc">${escapeHtml(item.desc)}</div>
+        <div class="card-title">
+          ${escapeHtml(item.name)}
+        </div>
+
+        <div class="card-desc">
+          ${escapeHtml(item.desc)}
+        </div>
 
         <div class="card-info">
-          📍 <strong>Location:</strong> ${escapeHtml(item.location)}<br>
-          📞 <strong>Contact:</strong> ${escapeHtml(item.contact)}
+          📍 <strong>Location:</strong>
+          ${escapeHtml(item.location)}<br>
+
+          📞 <strong>Contact:</strong>
+          ${escapeHtml(item.contact)}
         </div>
 
         ${actionButtonHtml}
@@ -374,95 +503,437 @@ let actionButtonHtml = '';
   `;
 }
 
-// ── 6. REPORT FORM SUBMISSION ──
-async function handleReportSubmit(e) {
-  e.preventDefault();
+function contactOwner(itemId) {
+  const item = items.find(
+    currentItem =>
+      currentItem.id === itemId &&
+      currentItem.type === 'Lost'
+  );
 
-  const newItem = {
-    id: Date.now(),
-    type: document.getElementById('item-type').value,
-    name: document.getElementById('item-name').value.trim(),
-    category: document.getElementById('item-category').value,
-    location: document.getElementById('item-location').value.trim(),
-    date: document.getElementById('item-date').value,
-    contact: document.getElementById('item-contact').value.trim(),
-    desc: document.getElementById('item-desc').value.trim(),
-    img: 'https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?auto=format&fit=crop&w=500&q=80'
-  };
+  if (!item) {
+    alert('Item details are unavailable.');
+    return;
+  }
 
-  // Add new item to beginning of items array
-  items.unshift(newItem);
+  if (
+    !item.contact ||
+    item.contact === 'Contact through the portal'
+  ) {
+    alert('No contact information is available for this item.');
+    return;
+  }
 
-  // Close modal and reset form
-  closeModal('report-modal');
-  document.getElementById('report-form').reset();
-
-  filterItems();
-
-  alert('Item reported successfully!');
+  alert(`Contact information: ${item.contact}`);
 }
 
-// ── 7. CLAIM FORM HANDLER ──
-let selectedItemId = null; // Item ki ID track karne ke liye
+function formatDate(value) {
+  if (!value) return '';
 
-function openClaim(itemId, itemName) {
-  selectedItemId = itemId; // Sahi item ID store hogi
-  document.getElementById('claim-title').textContent = `Claiming: "${itemName}"`;
-  
-  // Modal open karne se pehle form fields ko reset/clear kar sakte hain
-  openModal('claim-modal');
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toLocaleDateString();
 }
 
-async function handleClaimSubmit(e) {
-  e.preventDefault();
 
-  // Form ke inputs se exact user data nikalna
-  const proofDescription = document.getElementById('claim-proof').value.trim();
-  const rollNumberInput = document.getElementById('claim-contact').value.trim();
+async function handleReportSubmit(event) {
+  event.preventDefault();
 
-  // LocalStorage se token nikal kar 'bearer_' ya 'bearer ' hata kar clean karna
-  let rawToken = localStorage.getItem('campus_token') || 
-                 localStorage.getItem('access_token') || 
-                 localStorage.getItem('token') || '';
-  
-  const cleanToken = rawToken.replace(/^bearer[_-]/i, '').trim();
-  
-  try {
- 
+  const form = event.currentTarget;
 
-    if (response.ok) {
-      const data = await response.json();
-      closeModal('claim-modal');
-      document.getElementById('claim-form').reset(); // Form clear karna
-      alert('Claim request successfully submitted to admin database!');
-    } else {
-      const err = await response.json();
-      alert('Error: ' + (err.detail || 'Failed to submit claim'));
+  const submitButton = form.querySelector(
+    'button[type="submit"]'
+  );
+
+  const originalButtonText = submitButton
+    ? submitButton.textContent
+    : 'Submit Report';
+
+  const type = document.getElementById('item-type').value;
+  const category = document.getElementById('item-category').value;
+  const title = document.getElementById('item-name').value.trim();
+  const location = document.getElementById('item-location').value.trim();
+  const date = document.getElementById('item-date').value;
+  const contact = document.getElementById('item-contact').value.trim();
+  const description = document.getElementById('item-desc').value.trim();
+
+  const imageInput = document.getElementById('item-image');
+  const imageFile = imageInput?.files?.[0];
+
+  if (!title || !location || !date || !contact || !description) {
+    alert('Please complete all required fields.');
+    return;
+  }
+
+  const token = getAuthToken();
+
+  if (!token) {
+    alert(
+      'Please log in using a valid backend account before reporting an item.'
+    );
+    return;
+  }
+
+  let imageUrl = null;
+
+  if (imageFile) {
+    if (!imageFile.type.startsWith('image/')) {
+      alert('Please select a valid image file.');
+      return;
     }
+
+    // The backend schema must accept image_url for this approach.
+    try {
+      imageUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = () => {
+          resolve(String(reader.result));
+        };
+
+        reader.onerror = () => {
+          reject(new Error('Could not read the selected image.'));
+        };
+
+        reader.readAsDataURL(imageFile);
+      });
+    } catch (error) {
+      alert(error.message);
+      return;
+    }
+  }
+
+  const normalizedCategory =
+    category.toLowerCase() === 'electronics'
+      ? 'electronics'
+      : 'other';
+
+  let payload;
+
+  if (type === 'Lost') {
+    payload = {
+      title,
+      description,
+      category: normalizedCategory,
+      date_lost: `${date}T00:00:00`,
+      location_lost: location,
+      reward_offered: false,
+      reward_amount: null,
+      image_url: imageUrl
+    };
+  } else {
+    payload = {
+      title,
+      description,
+      category: normalizedCategory,
+      date_found: `${date}T00:00:00`,
+      location_found: location,
+      image_url: imageUrl
+    };
+  }
+
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = 'Submitting...';
+  }
+
+  try {
+    const endpoint =
+      type === 'Lost' ? 'lost-items/' : 'found-items/';
+
+    const response = await fetch(`${API_BASE}/${endpoint}`, {
+      method: 'POST',
+      headers: authHeaders(true),
+      body: JSON.stringify(payload)
+    });
+
+    const responseText = await response.text();
+
+    let data = {};
+
+    if (responseText) {
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        data = { detail: responseText };
+      }
+    }
+
+    if (!response.ok) {
+      const detail =
+        typeof data.detail === 'string'
+          ? data.detail
+          : JSON.stringify(data.detail || data);
+
+      console.error('Report failed:', response.status, data);
+
+      if (response.status === 401 || response.status === 403) {
+        alert(
+          `Authentication error (${response.status}). ` +
+          'Please log in again using a valid backend account.\n\n' +
+          detail
+        );
+      } else if (response.status === 422) {
+        alert(
+          'The backend rejected the report data. Check the request schema.\n\n' +
+          detail
+        );
+      } else {
+        alert(
+          `Report failed (${response.status}).\n\n${detail}`
+        );
+      }
+
+      return;
+    }
+
+    closeModal('report-modal');
+    form.reset();
+
+    const dateInput = document.getElementById('item-date');
+
+    if (dateInput) {
+      dateInput.value = new Date().toISOString().split('T')[0];
+    }
+
+    await loadItemsFromBackend();
+
+    alert('Item reported successfully!');
+
   } catch (error) {
-    console.error('Network error:', error);
-    closeModal('claim-modal');
-    alert('Failed to connect to the server!');
+    console.error('Report network error:', error);
+
+    alert(
+      'Could not connect to FastAPI. Confirm that the backend is running.'
+    );
+
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = originalButtonText || 'Submit Report';
+    }
   }
 }
 
-// ── 8. MODAL UTILITIES ──
+
+function openClaim(itemId, itemName) {
+  selectedItemId = Number(itemId);
+
+  const titleElement = document.getElementById('claim-title');
+
+  if (titleElement) {
+    titleElement.textContent = `Claiming: "${itemName}"`;
+  }
+
+  openModal('claim-modal');
+}
+
+async function handleClaimSubmit(event) {
+  event.preventDefault();
+
+  const proofInput = document.getElementById('claim-proof');
+  const contactInput = document.getElementById('claim-contact');
+
+  const proofDescription = proofInput
+    ? proofInput.value.trim()
+    : '';
+
+  const claimantContact = contactInput
+    ? contactInput.value.trim()
+    : '';
+
+  if (!selectedItemId || !Number.isInteger(selectedItemId)) {
+    alert('Please select a valid found item.');
+    return;
+  }
+
+  if (proofDescription.length < 20) {
+    alert(
+      'Please provide at least 20 characters describing your proof of ownership.'
+    );
+
+    if (proofInput) proofInput.focus();
+
+    return;
+  }
+
+  if (!claimantContact) {
+    alert('Please enter your phone number or roll number.');
+
+    if (contactInput) contactInput.focus();
+
+    return;
+  }
+
+  const lostItemIdText = window.prompt(
+    'Enter the database ID of the lost item you reported. ' +
+    'This claim links it to the selected found item.'
+  );
+
+  if (lostItemIdText === null) return;
+
+  const lostItemId = Number.parseInt(lostItemIdText.trim(), 10);
+
+  if (!Number.isInteger(lostItemId) || lostItemId <= 0) {
+    alert('Enter a valid positive lost-item database ID.');
+    return;
+  }
+
+  const token = getAuthToken();
+
+  if (!token) {
+    alert(
+      'Your session does not contain a valid backend access token. ' +
+      'Please log in again.'
+    );
+
+    return;
+  }
+
+  const form = event.currentTarget;
+
+  const submitButton = form.querySelector(
+    'button[type="submit"], input[type="submit"]'
+  );
+
+  const originalButtonText = submitButton
+    ? (
+      submitButton.tagName === 'INPUT'
+        ? submitButton.value
+        : submitButton.textContent
+    )
+    : 'Submit Claim';
+
+  if (submitButton) {
+    submitButton.disabled = true;
+
+    if (submitButton.tagName === 'INPUT') {
+      submitButton.value = 'Submitting...';
+    } else {
+      submitButton.textContent = 'Submitting...';
+    }
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/claims/`, {
+      method: 'POST',
+
+      headers: authHeaders(true),
+
+      body: JSON.stringify({
+        lost_item_id: lostItemId,
+        found_item_id: selectedItemId,
+        proof_description:
+          `${proofDescription}\n` +
+          `Claimant phone/roll number: ${claimantContact}`
+      })
+    });
+
+    const responseText = await response.text();
+
+    let data = {};
+
+    if (responseText) {
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        data = { detail: responseText };
+      }
+    }
+
+    if (!response.ok) {
+      const detail =
+        data.detail ||
+        data.message ||
+        `HTTP ${response.status}`;
+
+      console.error('Claim failed:', response.status, data);
+
+      if (response.status === 401 || response.status === 403) {
+        alert(
+          `Authentication/permission error: ${detail}\n\n` +
+          'Please log in again using a valid backend account.'
+        );
+      } else if (response.status === 404) {
+        alert(
+          `Claim failed: ${detail}\n\n` +
+          'Check that both database IDs exist.'
+        );
+      } else if (response.status === 422) {
+        alert(
+          `The backend rejected the claim data: ${detail}\n\n` +
+          'Check the required claim fields.'
+        );
+      } else {
+        alert(`Could not submit claim: ${detail}`);
+      }
+
+      return;
+    }
+
+    closeModal('claim-modal');
+
+    const claimForm = document.querySelector('#claim-modal form');
+
+    if (claimForm) {
+      claimForm.reset();
+    }
+
+    selectedItemId = null;
+
+    alert('Claim request successfully submitted to the backend.');
+
+  } catch (error) {
+    console.error('Claim network error:', error);
+
+    alert(
+      'Could not reach FastAPI. Check the backend and browser console.'
+    );
+
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+
+      if (submitButton.tagName === 'INPUT') {
+        submitButton.value = originalButtonText || 'Submit Claim';
+      } else {
+        submitButton.textContent = originalButtonText || 'Submit Claim';
+      }
+    }
+  }
+}
+
+
 function openModal(id) {
   const modal = document.getElementById(id);
-  if (modal) modal.classList.add('active');
+
+  if (modal) {
+    modal.classList.add('active');
+  }
 }
 
 function closeModal(id) {
   const modal = document.getElementById(id);
-  if (modal) modal.classList.remove('active');
+
+  if (modal) {
+    modal.classList.remove('active');
+  }
 }
 
-// ── 9. XSS PROTECTION ──
-function escapeHtml(str) {
-  if (!str) return '';
-  return str.replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+// ── 14. HTML ESCAPING ──
+
+function escapeHtml(value) {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }

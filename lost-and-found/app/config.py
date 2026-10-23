@@ -4,6 +4,7 @@ Reads values from .env file automatically.
 """
 from functools import lru_cache
 from pydantic_settings import BaseSettings ,SettingsConfigDict
+from sqlalchemy.engine import URL
 
 
 class Settings(BaseSettings):
@@ -30,10 +31,14 @@ class Settings(BaseSettings):
     debug: bool = False
 
     @property
-    def database_url(self) -> str:
-        return (
-            f"mysql+pymysql://{self.db_user}:{self.db_password}"
-            f"@{self.db_host}:{self.db_port}/{self.db_name}"
+    def database_url(self) -> URL:
+        return URL.create(
+            drivername="mysql+pymysql",
+            username=self.db_user,
+            password=self.db_password,
+            host=self.db_host,
+            port=self.db_port,
+            database=self.db_name,
         )
 
  

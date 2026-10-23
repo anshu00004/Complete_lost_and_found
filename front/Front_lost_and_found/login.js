@@ -1,264 +1,261 @@
+
 /* ==========================================================================
-   LOGIN.JS — Authentication Logic for Login & Registration Page
-   
-   HOW IT WORKS:
-   1. Connects to login.html
-   2. Manages registered accounts in localStorage
-   3. Validates password rules matching anshu00004/lost-and-found
-   4. On login success, saves session and redirects to index.html
+   LOGIN.JS — Backend-connected Authentication
+   Uses the FastAPI backend for registration and login.
+   No fake tokens or local-only accounts.
    ========================================================================== */
 
-// ── 1. DEFAULT USER DATABASE ──
-// Uses the exact fields from anshu00004/lost-and-found schemas:
-// (full_name, email, password, phone, role)
 const BACKEND_URL = "http://127.0.0.1:8000";
+const AUTH_URL = `${BACKEND_URL}/api/v1/auth`;
 
-// When user press login button
-async function sendLoginData(email, password) {
-    try {
-        const response = await fetch(`${BACKEND_URL}/auth/login`, { // Jo bhi aapka backend ka route ho
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ email: email, password: password })
-        });
-
-        const data = await response.json();
-        
-        if (response.ok) {
-            console.log("Login Successful!", data);
-            alert("Login ho gaya!");
-        } else {
-            console.log("Login Failed:", data.detail);
-        }
-    } catch (error) {
-        console.error("Connection Error:", error);
-    }
-}
-const DEFAULT_USERS = [
-  {
-    full_name: "Student User",
-    email: "student@bitmesra.ac.in",
-    password: "Student123",
-    phone: "Not Provided",
-    Roll_Number: "BCA/10001/23",
-    role: "user"
-
-  },
-  {
-    full_name: "Campus Admin",
-    email: "admin@bitmesra.ac.in",
-    password: "Admin123",
-    phone: null,
-    role: "admin"
-  }
-];
-
-/**
- * Retrieves the users list from localStorage.
- * If first time running, initializes with DEFAULT_USERS.
- */
-function getUsers() {
-  const stored = localStorage.getItem('lostfound_users');
-  if (!stored) {
-    localStorage.setItem('lostfound_users', JSON.stringify(DEFAULT_USERS));
-    return DEFAULT_USERS;
-  }
-  try {
-    return JSON.parse(stored);
-  } catch (e) {
-    return DEFAULT_USERS;
-  }
-}
-
-/**
- * Saves updated users list back to localStorage.
- */
-function saveUsers(usersList) {
-  localStorage.setItem('lostfound_users', JSON.stringify(usersList));
-}
-
-// ── 2. TAB SWITCHING (Sign In vs Register) ──
+// ── 1. TAB SWITCHING ──
 function showTab(tab) {
   clearMessages();
-  const loginTab = document.getElementById('tab-login');
-  const regTab = document.getElementById('tab-register');
-  const loginForm = document.getElementById('form-login');
-  const regForm = document.getElementById('form-register');
 
-  if (tab === 'login') {
-    loginTab.classList.add('active');
-    regTab.classList.remove('active');
-    loginForm.style.display = 'block';
-    regForm.style.display = 'none';
+  const loginTab = document.getElementById("tab-login");
+  const regTab = document.getElementById("tab-register");
+  const loginForm = document.getElementById("form-login");
+  const regForm = document.getElementById("form-register");
+
+  if (tab === "login") {
+    loginTab.classList.add("active");
+    regTab.classList.remove("active");
+    loginForm.style.display = "block";
+    regForm.style.display = "none";
   } else {
-    regTab.classList.add('active');
-    loginTab.classList.remove('active');
-    regForm.style.display = 'block';
-    loginForm.style.display = 'none';
+    regTab.classList.add("active");
+    loginTab.classList.remove("active");
+    regForm.style.display = "block";
+    loginForm.style.display = "none";
   }
 }
 
-// ── 3. QUICK 1-CLICK TEST CREDENTIALS ──
+// ── 2. TEST ACCOUNT HELPER ──
+// These credentials work only if this account exists in the backend.
 function fillTestAccount() {
-  document.getElementById('login-email').value = 'student@bitmesra.ac.in';
-  document.getElementById('login-password').value = 'Student123';
+  document.getElementById("login-email").value =
+    "student@bitmesra.ac.in";
+  document.getElementById("login-password").value = "Student123";
 }
 
-// ── 4. SIGN IN FORM HANDLER ──
+// ── 3. LOGIN ──
 async function handleLogin(e) {
   e.preventDefault();
   clearMessages();
 
-  const email = document.getElementById('login-email').value.trim().toLowerCase();
-  const password = document.getElementById('login-password').value;
+  const email = document
+    .getElementById("login-email")
+    .value.trim()
+    .toLowerCase();
+
+  const password = document.getElementById("login-password").value;
+
+  if (!email || !password) {
+    showError("Please enter your email and password.");
+    return;
+  }
 
   try {
-    // Real FastAPI backend se login karke token lena
-    const response = await fetch('http://127.0.0.1:8000/api/v1/auth/login', {
-      method: 'POST',
+    // FastAPI OAuth2 login expects form data, not JSON.
+    const response = await fetch(`${AUTH_URL}/login`, {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/x-www-form-urlencoded"
       },
-      body: JSON.stringify({ email: email, password: password })
+      body: new URLSearchParams({
+        username: email,
+        password: password
+      })
     });
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
 
-    if (response.ok) {
-      // Backend se jo real token aur user data mila, use localStorage mein save karna
-      localStorage.setItem('campus_token', data.access_token || data.token);
-      localStorage.setItem('campus_user', JSON.stringify({
-        full_name: data.full_name || email.split('@')[0],
-        email: email,
-        role: data.role || 'user'
-      }));
-
-      showSuccess(`Welcome back! Redirecting to Portal...`);
-
-      setTimeout(() => {
-        window.location.href = 'index.html';
-      }, 900);
-    } else {
-      // Fallback agar backend route alag ho toh local users se match karein
-      const users = getUsers();
-      const matchedUser = users.find(u => u.email.toLowerCase() === email && u.password === password);
-
-      if (!matchedUser) {
-        showError(data.detail || 'Invalid email or password. Please try again.');
-        return;
-      }
-
-      // Agar fallback chale toh dummy token ki jagah standard token
-      const token = 'bearer_' + btoa(matchedUser.email + ':' + Date.now());
-      localStorage.setItem('campus_token', token);
-      localStorage.setItem('campus_user', JSON.stringify({
-        full_name: matchedUser.full_name,
-        email: matchedUser.email,
-        phone: matchedUser.phone,
-        role: matchedUser.role || 'user'
-      }));
-
-      showSuccess(`Welcome back, ${matchedUser.full_name}! Redirecting...`);
-      setTimeout(() => {
-        window.location.href = 'index.html';
-      }, 900);
+    if (!response.ok) {
+      showError(
+        data.detail || `Login failed (HTTP ${response.status}).`
+      );
+      return;
     }
+
+    const token = data.access_token || data.token;
+
+    if (!token) {
+      console.error("Login response did not contain a token:", data);
+      showError("Login response did not contain an access token.");
+      return;
+    }
+
+    // Store the actual backend-issued token.
+    localStorage.setItem("campus_token", token);
+
+    // Clear any old demo-session data.
+    localStorage.removeItem("lostfound_users");
+
+    // Save the returned user details if the API provides them.
+    let user = data.user || data.profile || null;
+
+    if (!user) {
+      try {
+        const profileResponse = await fetch(`${AUTH_URL}/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        if (profileResponse.ok) {
+          user = await profileResponse.json();
+        }
+      } catch (error) {
+        console.warn("Could not load user profile:", error);
+      }
+    }
+
+    localStorage.setItem(
+      "campus_user",
+      JSON.stringify({
+        ...(user || {}),
+        email: user?.email || email,
+        full_name:
+          user?.full_name ||
+          user?.name ||
+          email.split("@")[0],
+        role: user?.role || "user"
+      })
+    );
+
+    showSuccess("Login successful! Redirecting to portal...");
+
+    setTimeout(() => {
+      window.location.href = "index.html";
+    }, 700);
+
   } catch (error) {
-    console.error('Login network error:', error);
-    showError('Failed to connect to backend server. Make sure Uvicorn is running.');
+    console.error("Login network error:", error);
+    showError(
+      "Could not reach the backend. Check that the server is running."
+    );
   }
 }
 
-// ── 5. REGISTRATION FORM HANDLER ──
-function handleRegister(e) {
+// ── 4. REGISTRATION ──
+async function handleRegister(e) {
   e.preventDefault();
   clearMessages();
 
-  const name = document.getElementById('reg-name').value.trim();
-  const email = document.getElementById('reg-email').value.trim().toLowerCase();
-  const phone = document.getElementById('reg-phone').value.trim();
-  const password = document.getElementById('reg-password').value;
+  const name = document.getElementById("reg-name").value.trim();
+  const email = document
+    .getElementById("reg-email")
+    .value.trim()
+    .toLowerCase();
+  const phone = document.getElementById("reg-phone").value.trim();
+  const password = document.getElementById("reg-password").value;
 
-  // Validate rules from anshu00004 schemas.py
+  if (!name || !email || !password) {
+    showError("Please complete all required fields.");
+    return;
+  }
+
   if (password.length < 8) {
-    showError('Password must be at least 8 characters long.');
+    showError("Password must be at least 8 characters long.");
     return;
   }
+
   if (!/[A-Z]/.test(password)) {
-    showError('Password must contain at least one uppercase letter (A-Z).');
+    showError("Password must contain at least one uppercase letter.");
     return;
   }
+
   if (!/[0-9]/.test(password)) {
-    showError('Password must contain at least one digit (0-9).');
+    showError("Password must contain at least one digit.");
     return;
   }
 
-  const users = getUsers();
+  try {
+    const response = await fetch(`${AUTH_URL}/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        full_name: name,
+        email: email,
+        password: password,
+        phone: phone || null
+      })
+    });
 
-  // Check if email already registered
-  if (users.some(u => u.email.toLowerCase() === email)) {
-    showError('An account with this email already exists. Please Sign In.');
-    return;
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const detail = data.detail;
+      const message = Array.isArray(detail)
+        ? detail.map((item) => item.msg).join(", ")
+        : detail;
+
+      showError(
+        message || `Registration failed (HTTP ${response.status}).`
+      );
+      return;
+    }
+
+    // Registration succeeded. Sign in using the new backend account.
+    document.getElementById("login-email").value = email;
+    document.getElementById("login-password").value = password;
+
+    showTab("login");
+    showSuccess("Account created! Please sign in.");
+
+  } catch (error) {
+    console.error("Registration network error:", error);
+    showError(
+      "Could not reach the backend. Check that the server is running."
+    );
   }
-
-  // Add new user
-  const newUser = {
-    full_name: name,
-    email: email,
-    password: password,
-    phone: phone || '',
-    role: 'user'
-  };
-
-  users.push(newUser);
-  saveUsers(users);
-
-  // Auto-login newly registered user
-  const token = 'bearer_' + btoa(newUser.email + ':' + Date.now());
-  localStorage.setItem('campus_token', token);
-  localStorage.setItem('campus_user', JSON.stringify({
-    full_name: newUser.full_name,
-    email: newUser.email,
-    phone: newUser.phone,
-    role: newUser.role
-  }));
-
-  showSuccess('Account created successfully! Redirecting to Face of Project...');
-
-  setTimeout(() => {
-    window.location.href = 'index.html';
-  }, 900);
 }
 
-// ── 6. UI ALERT HELPERS ──
-function showError(msg) {
-  const el = document.getElementById('msg-error');
-  el.textContent = msg;
-  el.style.display = 'block';
+// ── 5. MESSAGE HELPERS ──
+function showError(message) {
+  const el = document.getElementById("msg-error");
+  const successEl = document.getElementById("msg-success");
+
+  if (successEl) successEl.style.display = "none";
+
+  if (el) {
+    el.textContent = message;
+    el.style.display = "block";
+  } else {
+    alert(message);
+  }
 }
 
-function showSuccess(msg) {
-  const el = document.getElementById('msg-success');
-  el.textContent = msg;
-  el.style.display = 'block';
+function showSuccess(message) {
+  const el = document.getElementById("msg-success");
+  const errorEl = document.getElementById("msg-error");
+
+  if (errorEl) errorEl.style.display = "none";
+
+  if (el) {
+    el.textContent = message;
+    el.style.display = "block";
+  } else {
+    alert(message);
+  }
 }
 
 function clearMessages() {
-  document.getElementById('msg-error').style.display = 'none';
-  document.getElementById('msg-success').style.display = 'none';
+  const errorEl = document.getElementById("msg-error");
+  const successEl = document.getElementById("msg-success");
+
+  if (errorEl) errorEl.style.display = "none";
+  if (successEl) successEl.style.display = "none";
 }
 
-// Initialize database on page load
-document.addEventListener('DOMContentLoaded', () => {
-  getUsers();
-});
+// ── 6. PASSWORD VISIBILITY ──
 function togglePasswordVisibility() {
-    const passwordInput = document.getElementById("login-password");
-    if (passwordInput.type === "password") {
-        passwordInput.type = "text";
-    } else {
-        passwordInput.type = "password";
-    }
+  const passwordInput = document.getElementById("login-password");
+
+  if (passwordInput) {
+    passwordInput.type =
+      passwordInput.type === "password" ? "text" : "password";
+  }
 }
