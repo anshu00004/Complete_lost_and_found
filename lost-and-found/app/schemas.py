@@ -82,7 +82,7 @@ class UserResponse(UserBase):
 class UserUpdate(BaseModel):
     full_name: Optional[str] = Field(None, min_length=2, max_length=100)
     phone: Optional[str] = Field(None, max_length=20)
-    Roll_Number: Optional[str] =Field(None, max_length=50) #make changes here
+    Roll_number: Optional[str] =Field(None, max_length=50) #make changes here
 
 
 # ---------------------------------------------------------------------------
@@ -97,7 +97,7 @@ class LostItemCreate(BaseModel):
     location_lost: str = Field(..., min_length=3, max_length=300)
     reward_offered: bool = False
     reward_amount: Optional[str] = Field(None, max_length=50)
-    image_url: Optional[str] = Field(None, max_length=500)
+    image_url: Optional[str] = None
 
     @field_validator("reward_amount")
     @classmethod
@@ -115,7 +115,7 @@ class LostItemUpdate(BaseModel):
     location_lost: Optional[str] = Field(None, min_length=3, max_length=300)
     reward_offered: Optional[bool] = None
     reward_amount: Optional[str] = Field(None, max_length=50)
-    image_url: Optional[str] = Field(None, max_length=500)
+    image_url: Optional[str] = None
     status: Optional[ItemStatus] = None
 
 
@@ -147,6 +147,8 @@ class LostItemSummary(BaseModel):
     status: ItemStatus
     reward_offered: bool
     image_url: Optional[str] = None
+    reporter_id: int               # added
+    reporter: Optional[UserResponse] = None  #  added
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -163,7 +165,7 @@ class FoundItemCreate(BaseModel):
     date_found: datetime
     location_found: str = Field(..., min_length=3, max_length=300)
     storage_location: Optional[str] = Field(None, max_length=300)
-    image_url: Optional[str] = Field(None, max_length=500)
+    image_url: Optional[str] = None
 
 
 class FoundItemUpdate(BaseModel):
@@ -173,7 +175,7 @@ class FoundItemUpdate(BaseModel):
     date_found: Optional[datetime] = None
     location_found: Optional[str] = Field(None, min_length=3, max_length=300)
     storage_location: Optional[str] = Field(None, max_length=300)
-    image_url: Optional[str] = Field(None, max_length=500)
+    image_url: Optional[str] = None
     status: Optional[ItemStatus] = None
 
 
@@ -216,7 +218,7 @@ class ClaimCreate(BaseModel):
     lost_item_id: int
     found_item_id: int
     proof_description: str = Field(..., min_length=20)
-    proof_image_url: Optional[str] = Field(None, max_length=500)
+    proof_image_url: Optional[str] = None
 
 
 class ClaimReview(BaseModel):

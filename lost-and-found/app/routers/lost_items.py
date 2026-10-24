@@ -6,6 +6,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app import models, schemas
 from app.auth import get_current_active_admin, get_current_user
@@ -63,20 +64,14 @@ def report_lost_item(
 def list_lost_items(
     db: Session = Depends(get_db),
     _: models.User = Depends(get_current_user),
-    # Filters
     category: Optional[models.Category] = Query(None),
     status: Optional[models.ItemStatus] = Query(None),
     keyword: Optional[str] = Query(None, max_length=100),
-    # Pagination
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ):
-    """
-    Return a paginated list of lost items.
-    Supports filtering by category, status, and a full-text keyword search
-    on title + description + location.
-    """
-    query = db.query(models.LostItem)
+    # 👈 Yahan .options(joinedload(models.LostItem.reporter)) jod dein
+    query = db.query(models.LostItem).options(joinedload(models.LostItem.reporter))
 
     if category:
         query = query.filter(models.LostItem.category == category)
@@ -106,7 +101,6 @@ def list_lost_items(
         page_size=page_size,
         items=[schemas.LostItemSummary.model_validate(i) for i in items],
     )
-
 
 # ---------------------------------------------------------------------------
 # Read (single)

@@ -113,6 +113,10 @@
           <label>Location (Campus Area)</label>
           <input type="text" id="item-location" placeholder="e.g. Central Library 1st Floor" required>
         </div>
+        <div class="form-group">
+         <label>Roll Number</label>
+         <input type="text" id="item-roll" placeholder="e.g. BCA/xxxxx/xxx" required>
+        </div> 
 
         <div class="form-group">
           <label>Date</label>
@@ -125,13 +129,18 @@
 
         <div class="form-group">
           <label>Contact Info</label>
-          <input type="text" id="item-contact" placeholder="Phone Number or Email" required>
+          <input type="text" id="item-contact" placeholder="Enter Phone Number" required>
         </div>
 
         <div class="form-group">
           <label>Description</label>
           <textarea id="item-desc" rows="3" placeholder="Provide distinct features, color, brand..." required></textarea>
         </div>
+        <div class="form-group">
+        <label>Secret / Any Hidden Mark (Optional)</label>
+        <input type="text" id="item-secret" placeholder="e.g., Scratch on back, specific wallpaper, etc. (Visible to Admin only)">
+         <small style="color: #666; font-size: 0.8rem;">These details are used to verify the owner.</small>
+       </div>
 
         <button type="submit" class="btn btn-success" style="width: 100%;">Submit Report</button>
       </form>
@@ -147,15 +156,46 @@
       <h2 style="margin-bottom: 1rem;">Claim Belonging</h2>
       <p id="claim-title" style="color: #4444aa; font-weight: bold; margin-bottom: 1rem;"></p>
 
-      <form onsubmit="handleClaimSubmit(event)">
+ <form onsubmit="handleClaimSubmit(event)">
         <div class="form-group">
           <label>Proof of Ownership / Details</label>
           <textarea id="claim-proof" rows="3" placeholder="Describe identifying marks or contents inside to verify ownership..." required></textarea>
         </div>
+
         <div class="form-group">
-          <label>Your Phone / Roll Number</label>
-          <input type="text" id="claim-contact" placeholder="e.g. 7xxxxxxxxx / BCA/40xxx/24" required>
+          <label>Roll Number</label>
+          <input type="text" id="claim-roll" placeholder="e.g. BCA/40xxx/xx" required>
         </div>
+
+        <div class="form-group">
+          <label>Contact Number (Phone)</label>
+          <input type="text" id="claim-contact" placeholder="e.g. 9xxxxxxxxx" required>
+        </div>
+
+        <div class="form-group">
+          <label>Current Semester</label>
+          <select id="claim-semester" required>
+            <option value="">Select Semester</option>
+            <option value="1st Semester">1st Semester</option>
+            <option value="2nd Semester">2nd Semester</option>
+            <option value="3rd Semester">3rd Semester</option>
+            <option value="4th Semester">4th Semester</option>
+            <option value="5th Semester">5th Semester</option>
+            <option value="6th Semester">6th Semester</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Upload College ID Card or Registration Slip (Mandatory)</label>
+          <input type="file" id="claim-image" accept="image/*" required>
+         <!--- <small style="color: #666; font-size: 0.8rem;">Verification ke liye ID Card ya Registration Slip ki photo upload karna anivarya hai.</small> -->
+        </div>
+        <div class="form-group">
+        <label>Secret Details / Password / Identifying Mark</label>
+        <input type="text" id="claim-secret" placeholder="e.g., What is written inside or screen lock clue..." required>
+        <small style="color: #666; font-size: 0.8rem;">It is important  to be filled so that it proves that this item belongs to you.</small>
+        </div>
+
         <button type="submit" class="btn btn-success" style="width: 100%;">Submit Claim</button>
       </form>
     </div>

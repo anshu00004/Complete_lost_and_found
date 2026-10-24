@@ -149,15 +149,14 @@ async function loadItemsFromBackend() {
   }
 
   try {
-    // Get the token saved during login
-    const rawToken = localStorage.getItem('campus_token');
+    // Use the safe getAuthToken() helper instead of hardcoding 'campus_token'
+    const token = getAuthToken();
 
-    if (!rawToken) {
+    if (!token) {
       throw new Error('You are not logged in. Please log in again.');
+
     }
 
-    // Handle tokens stored either with or without "Bearer "
-    const token = rawToken.replace(/^Bearer\s+/i, '').replace(/^"+|"+$/g, '');
 
     const headers = {
       Authorization: `Bearer ${token}`
@@ -242,11 +241,16 @@ function checkAuthState() {
     try {
       const user = JSON.parse(userJson);
       const displayName = user.full_name || user.email || 'Student';
+      
+      // Check if logged-in user is the admin
+      const isAdmin = (user.email === 'adminbitmesralalpur@gmail.com');
 
       userArea.innerHTML = `
         <span class="user-greeting">
           👤 ${escapeHtml(displayName)}
         </span>
+
+        ${isAdmin ? `<a href="admin.html" class="btn btn-outline" style="text-decoration: none;">🛡️ Admin Panel</a>` : ''}
 
         <button
           type="button"
@@ -275,7 +279,6 @@ function checkAuthState() {
     </a>
   `;
 }
-
 function logoutUser() {
   localStorage.removeItem('campus_token');
   localStorage.removeItem('campus_refresh_token');
@@ -524,8 +527,8 @@ function createCardHtml(item) {
 
       <div class="card-body">
         <div class="card-meta">
-          <span class="${tagClass}">
-            ${tagText} &bull; ${escapeHtml(item.category)}
+         <span class="${tagClass}">
+            ${tagText} &bull; ${escapeHtml(item.category)} (ID: ${item.id})
           </span>
 
           <span style="font-size:.75rem;color:#888;">
@@ -611,12 +614,47 @@ async function handleReportSubmit(event) {
   const date = document.getElementById('item-date').value;
   const contact = document.getElementById('item-contact').value.trim();
   const description = document.getElementById('item-desc').value.trim();
-
+  const rollNumber = document.getElementById('item-roll').value.trim(); 
   const imageInput = document.getElementById('item-image');
   const imageFile = imageInput?.files?.[0];
 
-  if (!title || !location || !date || !contact || !description) {
+  if (!title || !location || !date || !contact || !rollNumber || !description) {
     alert('Please complete all required fields.');
+    return;
+  }
+// 🔴 Specific rule for Lost item: Contact is mandatory
+  if (type === 'Lost') {
+    if (!contact) {
+      alert('Please enter your contact number. Providing a contact number is mandatory for reporting lost items.');
+      document.getElementById('item-contact').focus();
+      return;
+    }
+
+    // Email check: displaying '@' for errors
+    if (contact.includes('@')) {
+      alert('Email is not allowed in contact info. Please enter a valid phone number only.');
+      document.getElementById('item-contact').focus();
+      return;
+    }
+
+    // Length check: phone number should be of 10 digits 
+    if (contact.length < 10 || contact.length > 11) {
+      alert('Please enter a valid phone number (10  digits).');
+      document.getElementById('item-contact').focus();
+      return;
+    }
+  } else {
+    // Found items should not have email or contact number
+    if (contact && contact.includes('@')) {
+      alert('Email is not allowed in contact info. Please enter a valid phone number only.');
+      document.getElementById('item-contact').focus();
+      return;
+    }
+  }
+  // if status type is 'Found' , than image uploading is compulsary 
+  if (type === 'Found' && !imageFile) {
+    alert('Please upload an image for the found item. Image upload is mandatory when reporting a found item.');
+    if (imageInput) imageInput.focus();
     return;
   }
 
@@ -672,6 +710,7 @@ async function handleReportSubmit(event) {
       category: normalizedCategory,
       date_lost: `${date}T00:00:00`,
       location_lost: location,
+      contact: `Roll: ${rollNumber} | Contact: ${contact}`, // added
       reward_offered: false,
       reward_amount: null,
       image_url: imageUrl
@@ -683,6 +722,7 @@ async function handleReportSubmit(event) {
       category: normalizedCategory,
       date_found: `${date}T00:00:00`,
       location_found: location,
+      contact: `Roll: ${rollNumber} | Contact: ${contact}`, // added
       image_url: imageUrl
     };
   }
@@ -786,8 +826,27 @@ function openClaim(itemId, itemName) {
 async function handleClaimSubmit(event) {
   event.preventDefault();
 
+  const imageInput = document.getElementById('claim-image');
+  const imageFile = imageInput?.files?.[0];
+
+let imageUrl = null;
+if (imageFile) {
+  if (imageFile.type.startsWith('image/')) {
+    imageUrl = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.readAsDataURL(imageFile);
+    });
+  }
+}
   const proofInput = document.getElementById('claim-proof');
+  const rollInput = document.getElementById('claim-roll');
   const contactInput = document.getElementById('claim-contact');
+  const semSelect = document.getElementById('claim-semester');
+  const claimantRoll = rollInput ? rollInput.value.trim() : '';
+  const claimantSem = semSelect ? semSelect.value : '';
+  const secretInput = document.getElementById('claim-secret');
+  const claimantSecret = secretInput ? secretInput.value.trim() : '';
 
   const proofDescription = proofInput
     ? proofInput.value.trim()
@@ -812,19 +871,13 @@ async function handleClaimSubmit(event) {
     return;
   }
 
-  if (!claimantContact) {
-    alert('Please enter your phone number or roll number.');
-
-    if (contactInput) contactInput.focus();
-
+if (!claimantRoll || !claimantContact || !claimantSem) {
+    alert('Roll Number, Contact Number aur Semester bharna anivarya hai.');
     return;
   }
-
-  const lostItemIdText = window.prompt(
-    'Enter the database ID of the lost item you reported. ' +
-    'This claim links it to the selected found item.'
+const lostItemIdText = window.prompt(
+    'Please enter the ID allocated to you while reporting your lost item. If you have not reported your lost item, kindly report it first.'
   );
-
   if (lostItemIdText === null) return;
 
   const lostItemId = Number.parseInt(lostItemIdText.trim(), 10);
@@ -878,12 +931,15 @@ async function handleClaimSubmit(event) {
       body: JSON.stringify({
         lost_item_id: lostItemId,
         found_item_id: selectedItemId,
-        proof_description:
-          `${proofDescription}\n` +
-          `Claimant phone/roll number: ${claimantContact}`
+        proof_description: 
+          `Proof: ${proofDescription}\n` +
+          `Roll Number: ${claimantRoll}\n` +
+          `Contact: ${claimantContact}\n` +
+          `Semester: ${claimantSem}\n` +
+          `Claimant's Secret Detail: ${claimantSecret}`,
+        proof_image_url: imageUrl
       })
     });
-
     const responseText = await response.text();
 
     let data = {};
@@ -936,7 +992,7 @@ async function handleClaimSubmit(event) {
 
     selectedItemId = null;
 
-    alert('Claim request successfully submitted to the backend.');
+ alert('Your claim has been successfully submitted to the admin backend! We will verify your details and update you soon.');
 
   } catch (error) {
     console.error('Claim network error:', error);

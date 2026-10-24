@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Smart Campus Lost & Found</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Dashboard Stats Card Styling */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: #ffffff;
+      padding: 1.2rem;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      text-align: center;
+    }
+    .stat-card h3 { font-size: 1.8rem; color: #2563eb; margin-bottom: 0.3rem; }
+    .stat-card p { color: #6b7280; font-size: 0.9rem; font-weight: 500; }
+    
+    /* Search & Filter Controls Styling */
+    .admin-controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .admin-controls input, .admin-controls select {
+      padding: 0.6rem;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.95rem;
+    }
+    .admin-controls input { flex: 1; min-width: 250px; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="container nav">
+      <div class="logo">
+        🛡️ Admin Dashboard <span class="badge-campus">BIT MESRA LALPUR</span>
+      </div>
+      <div class="nav-actions" style="display: flex; align-items: center; gap: 0.6rem;">
+        <a href="index.html" class="btn btn-outline">⬅️ Back to Portal</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Page Title / Hero Section -->
+  <div class="container hero">
+    <h1>Manage Claims & Verifications</h1>
+    <p>Review submitted ownership claims, verify student proofs, and take actions efficiently.</p>
+  </div>
+
+  <div class="container" id="admin-content">
+    
+    <!-- 1. Summary Statistics Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <h3 id="stat-total-claims">0</h3>
+        <p>Total Claims</p>
+      </div>
+      <div class="stat-card">
+        <h3 id="stat-pending-claims" style="color: #d97706;">0</h3>
+        <p>Pending Claims</p>
+      </div>
+      <div class="stat-card">
+        <h3 id="stat-verified-claims" style="color: #16a34a;">0</h3>
+        <p>Approved Claims</p>
+      </div>
+    </div>
+
+    <!-- 2. Search & Filter Bar -->
+    <div class="admin-controls">
+      <input type="text" id="admin-search" placeholder="Search by Claim ID or Proof details..." oninput="filterAdminClaims()">
+      <select id="status-filter" onchange="filterAdminClaims()">
+        <option value="all">All Statuses</option>
+        <option value="pending">Pending</option>
+        <option value="approved">Approved</option>
+        <option value="rejected">Rejected</option>
+      </select>
+    </div>
+
+    <h3 style="margin-bottom: 1rem;">Submitted Claims List</h3>
+    <!-- Claims List Container -->
+    <div id="claims-container">
+      <p>Loading claims from backend...</p>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      Smart Campus Lost &amp; Found Portal &bull; Admin Panel
+    </div>
+  </footer>
+
+  <!-- JavaScript Logic for Admin Panel -->
+  <script>
+    const API_BASE = 'http://127.0.0.1:8000/api/v1';
+    let allClaims = []; // Store all fetched claims globally for search/filtering
+
+    // Helper: Retrieve auth token from browser storage
+    function getAuthToken() {
+      return localStorage.getItem('campus_token') || '';
+    }
+
+    // Function: Fetch all claims from backend when page loads
+    async function loadAdminClaims() {
+      const container = document.getElementById('claims-container');
+      const token = getAuthToken();
+
+      if (!token) {
+        container.innerHTML = '<p style="color:#b91c1c;">Please log in first to view claims.</p>';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/claims/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to load claims (Status: ${response.status})`);
+        }
+
+        const data = await response.json();
+        allClaims = Array.isArray(data) ? data : data.items || [];
+
+        // Update statistics cards and render claims list
+        updateStatistics(allClaims);
+        renderClaims(allClaims);
+
+      } catch (error) {
+        console.error('Error loading claims:', error);
+        container.innerHTML = `<p style="color:#b91c1c;">Could not fetch claims from backend: ${error.message}</p>`;
+      }
+    }
+
+    // Function: Update top counter boxes (Total, Pending, Approved)
+    function updateStatistics(claims) {
+      const total = claims.length;
+      const pending = claims.filter(c => !c.status || c.status.toLowerCase() === 'pending').length;
+      const approved = claims.filter(c => c.status && c.status.toLowerCase() === 'approved').length;
+
+      document.getElementById('stat-total-claims').textContent = total;
+      document.getElementById('stat-pending-claims').textContent = pending;
+      document.getElementById('stat-verified-claims').textContent = approved;
+    }
+
+    // Function: Render claims into HTML cards on the page
+    function renderClaims(claimsList) {
+      const container = document.getElementById('claims-container');
+
+      if (claimsList.length === 0) {
+        container.innerHTML = '<p style="color:#666;">No matching claims found.</p>';
+        return;
+      }
+
+      let html = '<div style="display: flex; flex-direction: column; gap: 1rem;">';
+      
+      claimsList.forEach(claim => {
+        const statusLower = (claim.status || 'pending').toLowerCase();
+        const isPending = statusLower === 'pending';
+
+        // Set status text color dynamically
+        let statusColor = '#2563eb';
+        if (statusLower === 'approved') statusColor = '#16a34a';
+        else if (statusLower === 'rejected') statusColor = '#dc2626';
+
+        html += `
+          <div style="background: #ffffff; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <p style="margin-bottom: 0.5rem;"><strong>Claim ID:</strong> ${claim.id}</p>
+            <p style="margin-bottom: 0.5rem;"><strong>Lost Item ID:</strong> ${claim.lost_item_id}</p>
+            <p style="margin-bottom: 0.5rem;"><strong>Found Item ID:</strong> ${claim.found_item_id || 'N/A'}</p>
+            <p style="margin-bottom: 0.5rem;"><strong>Proof & Details:</strong> ${claim.proof_description}</p>
+            <p style="margin-bottom: 0.5rem;"><strong>Status:</strong> <span style="color: ${statusColor}; font-weight: bold; text-transform: uppercase;">${claim.status || 'Pending'}</span></p>
+            
+            <!-- Action Buttons: Shown only if status is pending -->
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.8rem; flex-wrap: wrap;">
+              ${isPending ? `
+                <button onclick="reviewClaim(${claim.id}, 'approved')" style="padding: 0.5rem 1rem; background-color: #16a34a; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                  ✅ Approve Claim
+                </button>
+                <button onclick="reviewClaim(${claim.id}, 'rejected')" style="padding: 0.5rem 1rem; background-color: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                  ❌ Reject Claim
+                </button>
+              ` : '<span style="font-weight: bold; color: #4b5563;">Already Processed</span>'}
+            </div>
+          </div>
+        `;
+      });
+
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    // Function: Filter claims based on Search Input and Status Dropdown
+    function filterAdminClaims() {
+      const query = document.getElementById('admin-search').value.toLowerCase().trim();
+      const statusFilter = document.getElementById('status-filter').value;
+
+      const filtered = allClaims.filter(claim => {
+        const matchesQuery = 
+          String(claim.id).includes(query) ||
+          String(claim.proof_description).toLowerCase().includes(query) ||
+          String(claim.lost_item_id).includes(query);
+
+        const statusLower = (claim.status || 'pending').toLowerCase();
+        let matchesStatus = true;
+        if (statusFilter !== 'all') {
+          matchesStatus = (statusLower === statusFilter);
+        }
+
+        return matchesQuery && matchesStatus;
+      });
+
+      renderClaims(filtered);
+    }
+
+    // Function: Send Approve or Reject request to backend API
+   async function reviewClaim(claimId, statusType) {
+      const token = getAuthToken();
+      if (!token) return;
+
+      let adminNotes = '';
+      if (statusType === 'rejected') {
+        adminNotes = prompt('Enter reason for rejecting this claim:') || 'Rejected by admin';
+        if (!adminNotes) return;
+      } else {
+        if (!confirm('Are you sure you want to approve this claim?')) return;
+        
+        // Yahan admin se office details ya contact number maang sakte hain
+        adminNotes = prompt(
+          'Enter pickup instructions or contact details for the student:\n(e.g., Collect from Lalpur Office Room 102 | Contact: 9876543210)', 
+          'Collect from BIT Lalpur Office / Admin desk with College ID card.'
+        ) || 'Approved. Please collect your item from the campus office.';
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/claims/${claimId}/review`, {
+          method: 'PATCH',
+          headers: { 
+            'Authorization': `Bearer ${token}`, 
+            'Content-Type': 'application/json' 
+          },
+          body: JSON.stringify({
+            status: statusType,
+            admin_notes: adminNotes
+          })
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(errText || 'Failed to update claim status');
+        }
+
+        alert(`Claim successfully ${statusType}!`);
+        loadAdminClaims();
+
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+
+    // Run when page finishes loading
+    document.addEventListener('DOMContentLoaded', loadAdminClaims);
+  </script>
+</body>
+</html>
