@@ -8,6 +8,13 @@
 
   <!-- External Stylesheet (style.css in the same folder) -->
   <link rel="stylesheet" href="style.css">
+  <script>
+  // if usser is not logged in (not having a token ) send user directly to login.html
+  const token = sessionStorage.getItem('campus_token') || localStorage.getItem('token');
+  if (!token) {
+    window.location.href = 'login.html';
+  }
+</script>
 </head>
 
 <body>
@@ -20,9 +27,10 @@
       <div class="logo">
         🔍 Smart Campus <span class="badge-campus">BIT MESRA LALPUR</span>
       </div>
-      <div class="nav-actions" style="display: flex; align-items: center; gap: 0.6rem;">
-        <!-- Dynamic User Area: Displays 'Login / Register' OR 'User Name + Sign Out' -->
+     <div class="nav-actions" style="display: flex; align-items: center; gap: 0.6rem;">
+        <!-- Dynamic User Area -->
         <div id="nav-user-area"></div>
+        <button class="btn btn-outline" onclick="openMyClaimsModal()">📋 My Claims</button>
         <button class="btn btn-success" onclick="openModal('report-modal')">➕ Report Item</button>
       </div>
     </div>
@@ -35,7 +43,22 @@
     <h1> Smart Campus Lost &amp; Found Portal</h1>
     <p>Report lost belongings, search reported items, and reconnect items with their owners easily.</p>
   </div>
-
+<!-- =========================================================================
+       NOTICE BANNER SECTION
+       ========================================================================= -->
+  <div class="container" style="margin-bottom: 1.5rem;">
+    <div style="background: #fffbeb; border: 1px solid #fde68a; border-left: 5px solid #d97706; padding: 1.2rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+      <h3 style="color: #b45309; margin-bottom: 0.5rem; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+        ⚠️ Important Campus Notice &amp; Guidelines
+      </h3>
+      <ul style="margin: 0; padding-left: 1.2rem; color: #4b5563; font-size: 0.95rem; line-height: 1.6;">
+        <li>Please note that tracking or recovering minor or general items (such as pens, rough notebooks, or ordinary keys) on campus is extremely difficult. Kindly take care of your belongings.</li>
+        <li>Once your claim is approved, you must collect your item from the <strong>BIT Lalpur Office (Admin Desk)</strong> within <strong>24 hours</strong>.</li>
+        <li>It is mandatory to bring and present your <strong>College ID Card</strong> or <strong>Course Registration Slip</strong> at the time of collection.</li>
+        <li>For any support or queries, contact admin at: <strong><a href="mailto:adminbitmesralalpur@gmail.com" style="color: #2563eb; text-decoration: underline;">adminbitmesralalpur@gmail.com</a></strong></li>
+      </ul>
+    </div>
+  </div>
   <!-- =========================================================================
        3. CONTROLS (SEARCH & HIERARCHICAL FILTERS)
        ========================================================================= -->
@@ -122,10 +145,10 @@
           <label>Date</label>
           <input type="date" id="item-date" required>
         </div>
-        <div class="form-group">
-           <label>Item Image</label>
-           <input type="file" id="item-image" accept="image/*">
-        </div>
+       <div class="form-group">
+       <label>Item Image (Mandatory for Found, Optional for Lost)</label>
+       <input type="file" id="item-image">
+       </div>
 
         <div class="form-group">
           <label>Contact Info</label>
@@ -187,7 +210,7 @@
 
         <div class="form-group">
           <label>Upload College ID Card or Registration Slip (Mandatory)</label>
-          <input type="file" id="claim-image" accept="image/*" required>
+          <input type="file" id="claim-image"  required>
          <!--- <small style="color: #666; font-size: 0.8rem;">Verification ke liye ID Card ya Registration Slip ki photo upload karna anivarya hai.</small> -->
         </div>
         <div class="form-group">
@@ -198,6 +221,18 @@
 
         <button type="submit" class="btn btn-success" style="width: 100%;">Submit Claim</button>
       </form>
+    </div>
+  </div>
+  <!-- =========================================================================
+       8. MY CLAIMS STATUS MODAL
+       ========================================================================= -->
+  <div id="my-claims-modal" class="modal">
+    <div class="modal-box" style="max-width: 600px;">
+      <button class="modal-close" onclick="closeModal('my-claims-modal')">&times;</button>
+      <h2 style="margin-bottom: 1rem;">My Submitted Claims & Status</h2>
+      <div id="my-claims-list" style="max-height: 400px; overflow-y: auto;">
+        <p>Loading your claims...</p>
+      </div>
     </div>
   </div>
 

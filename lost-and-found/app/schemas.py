@@ -95,6 +95,7 @@ class LostItemCreate(BaseModel):
     category: Category
     date_lost: datetime
     location_lost: str = Field(..., min_length=3, max_length=300)
+    contact: Optional[str] = Field(None, max_length=255) 
     reward_offered: bool = False
     reward_amount: Optional[str] = Field(None, max_length=50)
     image_url: Optional[str] = None
@@ -126,7 +127,8 @@ class LostItemResponse(BaseModel):
     category: Category
     date_lost: datetime
     location_lost: str
-    reward_offered: bool
+    contact: Optional[str] = None
+    reward_offered: Optional[bool] = False
     reward_amount: Optional[str] = None
     image_url: Optional[str] = None
     status: ItemStatus
@@ -164,6 +166,7 @@ class FoundItemCreate(BaseModel):
     category: Category
     date_found: datetime
     location_found: str = Field(..., min_length=3, max_length=300)
+    contact: Optional[str] = Field(None, max_length=255)
     storage_location: Optional[str] = Field(None, max_length=300)
     image_url: Optional[str] = None
 
@@ -186,6 +189,7 @@ class FoundItemResponse(BaseModel):
     category: Category
     date_found: datetime
     location_found: str
+    contact: Optional[str] = None
     storage_location: Optional[str] = None
     image_url: Optional[str] = None
     status: ItemStatus
@@ -196,15 +200,17 @@ class FoundItemResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
-
 class FoundItemSummary(BaseModel):
     id: int
     title: str
+    description: Optional[str] = None
     category: Category
     location_found: str
     date_found: datetime
     status: ItemStatus
     image_url: Optional[str] = None
+    reporter_id: int                # added
+    reporter: Optional[UserResponse] = None # added
     created_at: datetime
 
     model_config = {"from_attributes": True}

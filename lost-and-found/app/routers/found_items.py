@@ -6,7 +6,6 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
-
 from app import models, schemas
 from app.auth import get_current_user
 from app.database import get_db
@@ -55,6 +54,8 @@ def report_found_item(
 # List / Search
 # ---------------------------------------------------------------------------
 
+from sqlalchemy.orm import joinedload # <-- Ensure karein ki yeh import upar ho
+
 @router.get(
     "/",
     response_model=schemas.PaginatedResponse,
@@ -69,12 +70,16 @@ def list_found_items(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ):
-    query = db.query(models.FoundItem)
+    # 🟢 Yahan par .options(joinedload(models.FoundItem.reporter)) add karein:
+    query = db.query(models.FoundItem).options(joinedload(models.FoundItem.reporter))
+
+    # Baaki ka purana filtering code as it is rahega:
+    if status:
+        query = query.filter(models.FoundItem.status == status)
 
     if category:
         query = query.filter(models.FoundItem.category == category)
-    if status:
-        query = query.filter(models.FoundItem.status == status)
+        
     if keyword:
         like = f"%{keyword}%"
         query = query.filter(
@@ -98,8 +103,6 @@ def list_found_items(
         page_size=page_size,
         items=[schemas.FoundItemSummary.model_validate(i) for i in items],
     )
-
-
 # ---------------------------------------------------------------------------
 # Read (single)
 # ---------------------------------------------------------------------------

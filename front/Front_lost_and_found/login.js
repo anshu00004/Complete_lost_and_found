@@ -86,15 +86,15 @@ async function handleLogin(e) {
     }
 
     // Store the actual backend-issued tokens.
-    localStorage.setItem("campus_token", token);
+    sessionStorage.setItem("campus_token", token);
 
     const refreshToken = data.refresh_token;
     if (refreshToken) {
-      localStorage.setItem("campus_refresh_token", refreshToken);
+       sessionStorage.setItem("campus_refresh_token", refreshToken);
     }
 
     // Clear any old demo-session data.
-    localStorage.removeItem("lostfound_users");
+     sessionStorage.removeItem("lostfound_users");
 
     // Save the returned user details if the API provides them.
     let user = data.user || data.profile || null;
@@ -115,7 +115,7 @@ async function handleLogin(e) {
       }
     }
 
-    localStorage.setItem(
+     sessionStorage.setItem(
       "campus_user",
       JSON.stringify({
         ...(user || {}),
@@ -255,9 +255,19 @@ function clearMessages() {
   if (successEl) successEl.style.display = "none";
 }
 
-// ── 6. PASSWORD VISIBILITY ──
+// ── 6. SIGN IN PASSWORD VISIBILITY ──
 function togglePasswordVisibility() {
   const passwordInput = document.getElementById("login-password");
+
+  if (passwordInput) {
+    passwordInput.type =
+      passwordInput.type === "password" ? "text" : "password";
+  }
+}
+
+// ── 7. REGISTER PASSWORD VISIBILITY ──
+function toggleRegisterPasswordVisibility() {
+  const passwordInput = document.getElementById("reg-password");
 
   if (passwordInput) {
     passwordInput.type =

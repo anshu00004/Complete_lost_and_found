@@ -9,7 +9,6 @@ API docs:
     http://localhost:8000/redoc  (ReDoc)
 """
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -20,41 +19,38 @@ from app.routers import auth, lost_items, found_items, claims, admin
 
 settings = get_settings()
 
-
 # ---------------------------------------------------------------------------
-# Lifespan (startup / shutdown)
+# Lifespan (Startup / Shutdown Events)
 # ---------------------------------------------------------------------------
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Run startup tasks before the server begins serving requests."""
+    """Run startup tasks and initialize database tables before serving requests."""
     create_all_tables()
-    print(f"✅  {settings.app_name} v{settings.app_version} started.")
+    print(f"✅  {settings.app_name} v{settings.app_version} started successfully.")
     yield
     print("🛑  Application shutting down.")
 
 
 # ---------------------------------------------------------------------------
-# App instance
+# FastAPI App Instance
 # ---------------------------------------------------------------------------
+
 app = FastAPI(
     title="Smart Campus Lost and Found Portal",
     description="Official Lost and Found API Portal for BIT Mesra Lalpur Campus.",
     version="1.0.0",
-
-    contact={"name": "Support", "email": "support@lostandfound.example.com"},
-    license_info={"name": "MIT"},
     lifespan=lifespan,
 )
 
 
 # ---------------------------------------------------------------------------
-# Middleware
+# CORS Middleware Configuration (Allows all origins including [::]:5500)
 # ---------------------------------------------------------------------------
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # Restrict to your frontend origin in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,23 +58,23 @@ app.add_middleware(
 
 
 # ---------------------------------------------------------------------------
-# Routers
+# API Routers Registration
 # ---------------------------------------------------------------------------
 
 API_PREFIX = "/api/v1"
 
-app.include_router(auth.router,        prefix=API_PREFIX)
-app.include_router(lost_items.router,  prefix=API_PREFIX)
-app.include_router(found_items.router, prefix=API_PREFIX)
-app.include_router(claims.router,      prefix=API_PREFIX)
-app.include_router(admin.router,       prefix=API_PREFIX)
+app.include_router(auth.router,        prefix=API_PREFIX, tags=["Authentication"])
+app.include_router(lost_items.router,  prefix=API_PREFIX, tags=["Lost Items"])
+app.include_router(found_items.router, prefix=API_PREFIX, tags=["Found Items"])
+app.include_router(claims.router,      prefix=API_PREFIX, tags=["Claims"])
+app.include_router(admin.router,       prefix=API_PREFIX, tags=["Admin Panel"])
 
 
 # ---------------------------------------------------------------------------
-# Root / health endpoints
+# Root & Health Check Endpoints
 # ---------------------------------------------------------------------------
 
-@app.get("/", tags=["Health"], summary="Root — returns API metadata")
+@app.get("/", tags=["Health"], summary="Root endpoint returning API metadata")
 def root():
     return {
         "name": settings.app_name,
@@ -88,6 +84,6 @@ def root():
     }
 
 
-@app.get("/health", tags=["Health"], summary="Health check")
+@app.get("/health", tags=["Health"], summary="Health check endpoint")
 def health_check():
     return JSONResponse(content={"status": "ok"})

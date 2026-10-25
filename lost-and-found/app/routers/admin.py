@@ -5,6 +5,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload  
 
 from app import models, schemas
 from app.auth import get_current_active_admin
@@ -161,3 +162,41 @@ def get_stats(
                 .filter(models.Claim.status == models.ClaimStatus.REJECTED).count(),
         },
     }
+# ---------------------------------------------------------------------------
+# Admin All Lost & Found Items with Full Details
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/all-lost-items",
+    response_model=List[schemas.LostItemResponse],  # 🟢 Yeh add karna hai
+    summary="Get all lost items with full reporter details for admin",
+)
+def admin_get_all_lost_items(
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_active_admin),
+):
+    items = (
+        db.query(models.LostItem)
+        .options(joinedload(models.LostItem.reporter))
+        .order_by(models.LostItem.created_at.desc())
+        .all()
+    )
+    return items
+
+
+@router.get(
+    "/all-found-items",
+    response_model=List[schemas.FoundItemResponse],  # 🟢 Yeh bhi add karna hai
+    summary="Get all found items with full reporter details for admin",
+)
+def admin_get_all_found_items(
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_active_admin),
+):
+    items = (
+        db.query(models.FoundItem)
+        .options(joinedload(models.FoundItem.reporter))
+        .order_by(models.FoundItem.created_at.desc())
+        .all()
+    )
+    return items

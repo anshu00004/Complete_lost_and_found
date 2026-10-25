@@ -68,15 +68,17 @@ def list_lost_items(
     status: Optional[models.ItemStatus] = Query(None),
     keyword: Optional[str] = Query(None, max_length=100),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int =Query(20, ge=1, le=100),
 ):
-    # 👈 Yahan .options(joinedload(models.LostItem.reporter)) jod dein
     query = db.query(models.LostItem).options(joinedload(models.LostItem.reporter))
+
+    # 🟢 Sirf tabhi filter karein jab status explicitly bheja gaya ho (else hata diya hai)
+    if status:
+        query = query.filter(models.LostItem.status == status)
 
     if category:
         query = query.filter(models.LostItem.category == category)
-    if status:
-        query = query.filter(models.LostItem.status == status)
+        
     if keyword:
         like = f"%{keyword}%"
         query = query.filter(
@@ -101,7 +103,6 @@ def list_lost_items(
         page_size=page_size,
         items=[schemas.LostItemSummary.model_validate(i) for i in items],
     )
-
 # ---------------------------------------------------------------------------
 # Read (single)
 # ---------------------------------------------------------------------------
