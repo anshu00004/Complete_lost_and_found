@@ -108,8 +108,8 @@ def submit_claim(
     db.add(claim)
 
     # Mark both items as MATCHED so others know a potential match exists
-    lost_item.status = models.ItemStatus.MATCHED
-    found_item.status = models.ItemStatus.MATCHED
+    #lost_item.status = models.ItemStatus.MATCHED
+    # found_item.status = models.ItemStatus.MATCHED
 
     db.commit()
     db.refresh(claim)
